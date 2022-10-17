@@ -120,6 +120,38 @@ RC Table::create(const char *path, const char *name, const char *base_dir, int a
   return rc;
 }
 
+RC Table::drop(const char *path, const char *name, const char *base_dir, CLogManager *clog_manager)
+{
+  LOG_INFO("Begin to drop table %s:%s", base_dir, name);
+
+  RC rc = RC::SUCCESS;
+
+  int fd = ::open(path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
+  if (-1 != fd || EEXIST != errno) {
+    LOG_ERROR("Failed to create table file, it has been created. %s, EEXIST, %s", path, strerror(errno));
+    return RC::SCHEMA_TABLE_NOT_EXIST;
+  }
+
+  unlink(path);
+
+  std::string data_file = table_data_file(base_dir, name);
+  BufferPoolManager &bpm = BufferPoolManager::instance();
+  rc = bpm.delete_file(data_file.c_str());
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Failed to delete disk buffer pool of data file. file name=%s", data_file.c_str());
+    return rc;
+  }
+
+  for (const auto &index : indexes_) {
+    std::string index_file = table_index_file(base_dir_.c_str(), name, index->index_meta().name());
+    unlink(index_file.c_str());
+  }
+
+  LOG_INFO("Successfully drop table %s:%s", base_dir, name);
+  delete this;
+  return rc;
+}
+
 RC Table::open(const char *meta_file, const char *base_dir, CLogManager *clog_manager)
 {
   // 加载元数据文件
