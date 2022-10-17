@@ -552,8 +552,13 @@ RC ExecuteStage::do_insert(SQLStageEvent *sql_event)
 
   InsertStmt *insert_stmt = (InsertStmt *)stmt;
   Table *table = insert_stmt->table();
-
-  RC rc = table->insert_record(trx, insert_stmt->value_amount(), insert_stmt->values());
+  RC rc;
+  if (insert_stmt->group_amount() <= 1) {
+    rc = table->insert_record(trx, insert_stmt->value_amount(), insert_stmt->values());
+  } else {
+    rc = table->insert_multi_record(
+        trx, insert_stmt->value_amount(), insert_stmt->values(), insert_stmt->group_amount(), insert_stmt->groups());
+  }
   if (rc == RC::SUCCESS) {
     if (!session->is_trx_multi_operation_mode()) {
       CLogRecord *clog_record = nullptr;

@@ -300,6 +300,40 @@ RC Table::recover_insert_record(Record *record)
   return rc;
 }
 
+RC Table::insert_multi_record(Trx *trx, int value_num, const Value *values, int group_num, const InsertGroup *groups)
+{
+  if (value_num <= 0 || nullptr == values || group_num <= 0 || nullptr == groups) {
+    LOG_ERROR(
+        "Invalid argument. for insert_multi_record table name: %s, value num=%d, values=%p", name(), value_num, values);
+    return RC::INVALID_ARGUMENT;
+  }
+
+  for (int i = 0; i < group_num; i++) {
+    char *record_data;
+    RC rc;
+    if (i == 0) {
+      rc = make_record(value_num, values, record_data);
+    } else {
+      rc = make_record(groups[i - 1].value_num, groups[i - 1].values, record_data);
+    }
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Failed to create a record. rc=%d:%s", rc, strrc(rc));
+      return rc;
+    }
+
+    // TODO LJB : check rollback
+    Record record;
+    record.set_data(record_data);
+    rc = insert_record(trx, &record);
+    if (rc != RC::SUCCESS) {
+      trx->rollback();
+      return rc;
+    }
+    delete[] record_data;
+  }
+  return RC::SUCCESS;
+}
+
 RC Table::insert_record(Trx *trx, int value_num, const Value *values)
 {
   if (value_num <= 0 || nullptr == values) {

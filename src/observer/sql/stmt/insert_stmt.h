@@ -16,6 +16,7 @@ See the Mulan PSL v2 for more details. */
 
 #include "rc.h"
 #include "sql/stmt/stmt.h"
+#include "sql/parser/parse_defs.h"
 
 class Table;
 class Db;
@@ -23,7 +24,7 @@ class Db;
 class InsertStmt : public Stmt {
 public:
   InsertStmt() = default;
-  InsertStmt(Table *table, const Value *values, int value_amount);
+  InsertStmt(Table *table, const Value *values, int value_amount, int group_num, const InsertGroup *group);
 
   StmtType type() const override
   {
@@ -42,13 +43,23 @@ public:
   {
     return values_;
   }
+  const InsertGroup *groups() const
+  {
+    return groups_;
+  }
   int value_amount() const
   {
     return value_amount_;
+  }
+  int group_amount() const
+  {
+    return group_num_;
   }
 
 private:
   Table *table_ = nullptr;
   const Value *values_ = nullptr;
   int value_amount_ = 0;
+  int group_num_;
+  const InsertGroup *groups_;
 };
