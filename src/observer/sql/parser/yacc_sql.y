@@ -19,7 +19,14 @@ typedef struct ParserContext {
   Value values[MAX_NUM];
   Condition conditions[MAX_NUM];
   CompOp comp;
-	char id[MAX_NUM];
+  char id[MAX_NUM];
+
+  // add by us
+  size_t group_num;
+  size_t every_group_count;
+  size_t insert_groups[MAX_NUM*MAX_NUM];
+  size_t isUnique;
+
 } ParserContext;
 
 //获取子串
@@ -44,6 +51,12 @@ void yyerror(yyscan_t scanner, const char *str)
   context->select_length = 0;
   context->value_length = 0;
   context->ssql->sstr.insertion.value_num = 0;
+  
+  // add by us
+  context->group_num = 0;
+  context->every_group_count=0;
+  context->isUnique = 0;
+
   printf("parse sql failed. error=%s", str);
 }
 
@@ -279,21 +292,33 @@ ID_get:
 
 	
 insert:				/*insert   语句的语法解析树*/
-    INSERT INTO ID VALUES LBRACE value value_list RBRACE SEMICOLON 
+    INSERT INTO ID VALUES LBRACE value value_list RBRACE v_list SEMICOLON 
 		{
-			// CONTEXT->values[CONTEXT->value_length++] = *$6;
+			CONTEXT->ssql->flag=SCF_INSERT;
 
-			CONTEXT->ssql->flag=SCF_INSERT;//"insert";
-			// CONTEXT->ssql->sstr.insertion.relation_name = $3;
-			// CONTEXT->ssql->sstr.insertion.value_num = CONTEXT->value_length;
-			// for(i = 0; i < CONTEXT->value_length; i++){
-			// 	CONTEXT->ssql->sstr.insertion.values[i] = CONTEXT->values[i];
-      // }
-			inserts_init(&CONTEXT->ssql->sstr.insertion, $3, CONTEXT->values, CONTEXT->value_length);
+	CONTEXT->insert_groups[CONTEXT->group_num] = CONTEXT->every_group_count;
+	CONTEXT->every_group_count=0;
+        CONTEXT->group_num = CONTEXT->group_num + 1;
 
-      //临时变量清零
-      CONTEXT->value_length=0;
+	inserts_init(&CONTEXT->ssql->sstr.insertion, $3, CONTEXT->values, CONTEXT->insert_groups, CONTEXT->group_num);
+
+	//临时变量清零
+	CONTEXT->value_length=0;
     }
+
+v_list:
+    | node value value_list RBRACE v_list
+    {
+    };
+
+node:
+    COMMA LBRACE
+    {
+		// 每进来一次，表明已经有一个括号的值，放入了values，也就是卓这里处理的是前一个括号的属性
+    	CONTEXT->insert_groups[CONTEXT->group_num] = CONTEXT->every_group_count;
+    	CONTEXT->every_group_count=0;
+    	CONTEXT->group_num = CONTEXT->group_num + 1;
+    };
 
 value_list:
     /* empty */
@@ -304,13 +329,16 @@ value_list:
 value:
     NUMBER{	
   		value_init_integer(&CONTEXT->values[CONTEXT->value_length++], $1);
+		CONTEXT->every_group_count++;
 		}
     |FLOAT{
   		value_init_float(&CONTEXT->values[CONTEXT->value_length++], $1);
+		CONTEXT->every_group_count++;
 		}
     |SSS {
 			$1 = substr($1,1,strlen($1)-2);
   		value_init_string(&CONTEXT->values[CONTEXT->value_length++], $1);
+		CONTEXT->every_group_count++;
 		}
     ;
     

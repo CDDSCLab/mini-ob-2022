@@ -146,15 +146,43 @@ void selects_destroy(Selects *selects)
   selects->condition_num = 0;
 }
 
-void inserts_init(Inserts *inserts, const char *relation_name, Value values[], size_t value_num)
+void inserts_init(Inserts *inserts, const char *relation_name, Value values[], size_t groups[], size_t group_num)
 {
-  assert(value_num <= sizeof(inserts->values) / sizeof(inserts->values[0]));
+  if (group_num == 1) {
+    assert(groups[0] <= sizeof(inserts->values) / sizeof(inserts->values[0]));  // mine 字节数
 
-  inserts->relation_name = strdup(relation_name);
-  for (size_t i = 0; i < value_num; i++) {
-    inserts->values[i] = values[i];
+    inserts->relation_name = strdup(relation_name);
+    for (size_t i = 0; i < groups[0]; i++) {
+      inserts->values[i] = values[i];
+    }
+    inserts->value_num = groups[0];
+    inserts->group_num = group_num;
+  } else {  // group_num>1
+    // mine 检查括号的数量，不能超过MAX_NUM=20
+    assert(group_num <= sizeof(inserts->values) / sizeof(inserts->values[0]));
+
+    inserts->relation_name = strdup(relation_name);
+    inserts->group_num = group_num;
+    size_t read_count = 0;
+    for (size_t i = 0; i < group_num; i++) {
+      // mine 每个括号中值得数量，都不能超过MAX_NUM=20
+      assert(groups[i] <= sizeof(inserts->values) / sizeof(inserts->values[0]));
+      if (i == 0) {
+        for (size_t j = 0; j < groups[i]; j++) {
+          inserts->values[j] = values[j];
+          read_count++;
+        }
+        inserts->value_num = groups[0];
+      } else {
+        inserts->group[i - 1].value_num = groups[i];
+        size_t j = 0;
+        for (; j < groups[i]; j++) {
+          inserts->group[i - 1].values[j] = values[j + read_count];
+        }
+        read_count = read_count + j;
+      }
+    }
   }
-  inserts->value_num = value_num;
 }
 void inserts_destroy(Inserts *inserts)
 {
