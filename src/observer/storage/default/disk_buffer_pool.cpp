@@ -647,9 +647,20 @@ RC BufferPoolManager::create_file(const char *file_name)
   return RC::SUCCESS;
 }
 
-RC BufferPoolManager::delete_file(const char *file_name)
+RC BufferPoolManager::delete_file(const char *_file_name)
 {
-  if (unlink(file_name) < 0) {
+  std::string file_name(_file_name);
+  auto iter = buffer_pools_.find(file_name);
+  if (iter != buffer_pools_.end()) {
+    int fd = iter->second->file_desc();
+    fd_buffer_pools_.erase(fd);
+
+    DiskBufferPool *bp = iter->second;
+    buffer_pools_.erase(iter);
+    delete bp;
+  }
+
+  if (unlink(_file_name) < 0) {
     return RC::IOERR_DELETE;
   }
   return RC::SUCCESS;

@@ -133,7 +133,7 @@ RC Table::drop(const char *path, const char *name, const char *base_dir, CLogMan
   auto meta_file = table_meta_file(base_dir, name);
   rc = bpm.delete_file(meta_file.c_str());
   if (rc != RC::SUCCESS) {
-    LOG_ERROR("Failed to delete disk buffer pool of data file. file name=%s", meta_file.c_str());
+    LOG_ERROR("Failed to delete disk buffer pool of meta file. file name=%s", meta_file.c_str());
     return rc;
   }
   auto data_file = table_data_file(base_dir, name);
@@ -152,13 +152,12 @@ RC Table::drop(const char *path, const char *name, const char *base_dir, CLogMan
     }
     rc = bpm.delete_file(index_file.c_str());
     if (rc != RC::SUCCESS) {
-      LOG_ERROR("Failed to delete disk buffer pool of data file. file name=%s", index_file.c_str());
+      LOG_ERROR("Failed to delete disk buffer pool of index file. file name=%s", index_file.c_str());
       return rc;
     }
   }
 
   LOG_INFO("Successfully drop table %s:%s", base_dir, name);
-  delete this;
   return rc;
 }
 
@@ -448,6 +447,37 @@ RC Table::make_record(int value_num, const Value *values, char *&record_out)
 
   record_out = record;
   return RC::SUCCESS;
+}
+
+RC Table::update_record(Record *record, const char *attribute_name, const Value &value)
+{
+  RC rc = RC::SUCCESS;
+  const int normal_field_start_index = table_meta_.sys_field_num();
+  const int field_num = table_meta_.field_num();
+  for (int i = 0; i < field_num; ++i) {
+    const FieldMeta *field = table_meta_.field(i + normal_field_start_index);
+    if (strcmp(field->name(), attribute_name) != 0) {
+      continue;
+    }
+    // TODO(yueyang): support multi type.
+    if (field->type() != value.type) {
+      LOG_ERROR("Invalid value type. table name =%s, field name=%s, type=%d, but given=%d",
+          table_meta_.name(),
+          field->name(),
+          field->type(),
+          value.type);
+      return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+    }
+    size_t copy_len = field->len();
+    if (field->type() == CHARS) {
+      const size_t data_len = strlen((const char *)value.data);
+      if (copy_len > data_len) {
+        copy_len = data_len + 1;
+      }
+    }
+    memcpy(record->data() + field->offset(), value.data, copy_len);
+  }
+  return rc;
 }
 
 RC Table::init_record_handler(const char *base_dir)
@@ -750,6 +780,47 @@ static RC record_reader_delete_adapter(Record *record, void *context)
 {
   RecordDeleter &record_deleter = *(RecordDeleter *)context;
   return record_deleter.delete_record(record);
+}
+
+RC Table::update_record(Trx *trx, Record *record, const char *attribute_name, const Value &value)
+{
+  RC rc = RC::SUCCESS;
+
+  // delete from index.
+  rc = delete_entry_of_indexes(record->data(), record->rid(), false);
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Failed to delete indexes of record (rid=%d.%d). rc=%d:%s",
+        record->rid().page_num,
+        record->rid().slot_num,
+        rc,
+        strrc(rc));
+    return rc;
+  }
+
+  update_record(record, attribute_name, value);
+  rc = record_handler_->update_record(record);
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR(
+        "Failed to update record (rid=%d.%d). rc=%d:%s", record->rid().page_num, record->rid().slot_num, rc, strrc(rc));
+    return rc;
+  }
+
+  // insert into index.
+  rc = insert_entry_of_indexes(record->data(), record->rid());
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Failed to insert indexes of record (rid=%d.%d). rc=%d:%s",
+        record->rid().page_num,
+        record->rid().slot_num,
+        rc,
+        strrc(rc));
+    return rc;
+  }
+
+  if (trx != nullptr) {
+    // TODO(yueyang): implement redo log.
+  }
+
+  return rc;
 }
 
 RC Table::delete_record(Trx *trx, ConditionFilter *filter, int *deleted_count)
