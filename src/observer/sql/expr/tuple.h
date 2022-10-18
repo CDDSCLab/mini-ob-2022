@@ -111,6 +111,11 @@ public:
     FieldExpr *field_expr = (FieldExpr *)spec->expression();
     const FieldMeta *field_meta = field_expr->field().meta();
     cell.set_type(field_meta->type());
+    if (this->record_->data() == nullptr) {
+      cell.set_data(this->record_->data());
+      cell.set_length(field_meta->len());
+      return RC::SUCCESS;
+    }
     cell.set_data(this->record_->data() + field_meta->offset());
     cell.set_length(field_meta->len());
     return RC::SUCCESS;
@@ -152,6 +157,15 @@ public:
   const Record &record() const
   {
     return *record_;
+  }
+
+  const Table *table()
+  {
+    return table_;
+  }
+  std::vector<TupleCellSpec *> speces()
+  {
+    return speces_;
   }
 
 private:
@@ -300,4 +314,60 @@ public:
 private:
   std::vector<TupleCellSpec *> speces_;
   Tuple *tuple_ = nullptr;
+};
+
+class JoinTuple : public Tuple {
+public:
+  JoinTuple() = default;
+
+  void set_tuple(Tuple *left, Tuple *right, bool left_is_row)
+  {
+    left_ = left;
+    right_ = right;
+    left_is_row_ = left_is_row;
+  };
+
+  RC find_cell(const Field &field, TupleCell &cell) const override
+  {
+    if (left_->find_cell(field, cell) == RC::SUCCESS || right_->find_cell(field, cell) == RC::SUCCESS) {
+      return RC::SUCCESS;
+    }
+    return RC::NOTFOUND;
+  }
+
+  RC cell_at(int index, TupleCell &cell) const override
+  {
+    if (index <= 0 || index >= cell_num()) {
+      LOG_WARN("invalid argument. index=%d", index);
+      return RC::INVALID_ARGUMENT;
+    }
+    if (index < left_->cell_num()) {
+      return left_->cell_at(index, cell);
+    } else {
+      return right_->cell_at(index - left_->cell_num(), cell);
+    }
+  }
+
+  RC cell_spec_at(int index, const TupleCellSpec *&spec) const override
+  {
+    if (index <= 0 || index >= cell_num()) {
+      LOG_WARN("invalid argument. index=%d", index);
+      return RC::INVALID_ARGUMENT;
+    }
+    if (index < left_->cell_num()) {
+      return left_->cell_spec_at(index, spec);
+    } else {
+      return right_->cell_spec_at(index - left_->cell_num(), spec);
+    }
+  }
+
+  int cell_num() const override
+  {
+    return (left_->cell_num() + right_->cell_num());
+  }
+
+private:
+  Tuple *left_;
+  Tuple *right_;
+  bool left_is_row_ = false;
 };

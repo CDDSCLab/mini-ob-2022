@@ -30,6 +30,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/expr/tuple.h"
 #include "sql/operator/aggregation_operator.h"
 #include "sql/operator/table_scan_operator.h"
+#include "sql/operator/join_operator.h"
 #include "sql/operator/index_scan_operator.h"
 #include "sql/operator/predicate_operator.h"
 #include "sql/operator/update_operator.h"
@@ -420,9 +421,67 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   auto select_stmt = dynamic_cast<SelectStmt *>(sql_event->stmt());
   SessionEvent *session_event = sql_event->session_event();
   RC rc = RC::SUCCESS;
+  // >= 3 tables，有问题
   if (select_stmt->tables().size() != 1) {
-    LOG_WARN("select more than 1 tables is not supported");
-    rc = RC::UNIMPLENMENT;
+    std::vector<TableScanOperator *> scan_ops;
+    std::vector<PredicateOperator> pred_ops;
+    std::vector<JoinOperator> join_ops;
+    join_ops.reserve(select_stmt->tables().size() - 1);
+    for (size_t i = 0; i < select_stmt->tables().size(); i++) {
+      scan_ops.emplace_back(new TableScanOperator(select_stmt->tables()[i]));
+      pred_ops.emplace_back(PredicateOperator(select_stmt->filter_stmt()));
+      pred_ops[i].add_child(scan_ops[i]);
+    }
+
+    DEFER([&]() {
+      for (size_t i = 0; i < select_stmt->tables().size(); i++) {
+        delete scan_ops[i];
+      }
+    });
+
+    for (size_t i = 0; i < select_stmt->tables().size() - 1; i++) {
+      if (i == 0) {
+        join_ops.emplace_back(JoinOperator(&pred_ops[0], &pred_ops[1], true));
+      } else {
+        join_ops.emplace_back(JoinOperator(&join_ops[i - 1], &pred_ops[1 + 1], false));
+      }
+    }
+
+    ProjectOperator project_oper;
+
+    project_oper.add_child(&join_ops[join_ops.size() - 1]);
+    for (const Field &field : select_stmt->query_fields()) {
+      project_oper.add_projection(field.table(), field.meta());
+    }
+    rc = project_oper.open();
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("failed to open operator");
+      return rc;
+    }
+
+    std::stringstream ss;
+    print_tuple_header(ss, project_oper);
+    while ((rc = project_oper.next()) == RC::SUCCESS) {
+      // get current record
+      // write to response
+      Tuple *tuple = project_oper.current_tuple();
+      if (nullptr == tuple) {
+        rc = RC::INTERNAL;
+        LOG_WARN("failed to get current record. rc=%s", strrc(rc));
+        break;
+      }
+
+      tuple_to_string(ss, *tuple);
+      ss << std::endl;
+    }
+
+    if (rc != RC::RECORD_EOF) {
+      LOG_WARN("something wrong while iterate operator. rc=%s", strrc(rc));
+      project_oper.close();
+    } else {
+      rc = project_oper.close();
+    }
+    session_event->set_response(ss.str());
     return rc;
   }
 
