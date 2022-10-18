@@ -16,6 +16,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/log/log.h"
 #include "storage/common/db.h"
 #include "storage/common/table.h"
+#include "util/util.h"
 
 InsertStmt::InsertStmt(Table *table, const Value *values, int value_amount, int group_num, const InsertGroup *group)
     : table_(table), values_(values), value_amount_(value_amount), group_num_(group_num), groups_(group)
@@ -57,17 +58,29 @@ RC InsertStmt::create(Db *db, const Inserts &inserts, Stmt *&stmt)
 
     // check fields type
     const int sys_field_num = table_meta.sys_field_num();
-    for (int i = 0; i < value_num; i++) {
-      const FieldMeta *field_meta = table_meta.field(i + sys_field_num);
+    for (int j = 0; j < value_num; j++) {
+      const FieldMeta *field_meta = table_meta.field(j + sys_field_num);
       const AttrType field_type = field_meta->type();
-      const AttrType value_type = values[i].type;
+      const AttrType value_type = values[j].type;
       if (field_type != value_type) {  // TODO try to convert the value type to field type
-        LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
-            table_name,
-            field_meta->name(),
-            field_type,
-            value_type);
-        return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+        auto value = const_cast<Value *>(values + j);
+        if (field_type == DATES && value_type == CHARS) {
+          value->type = DATES;
+          const char *chars = static_cast<const char *>(value->data);
+          int date;
+          RC rc = char2date(chars, &date);
+          if (rc != RC::SUCCESS) {
+            return rc;
+          }
+          memcpy(value->data, &date, sizeof(date));
+        } else {
+          LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
+              table_name,
+              field_meta->name(),
+              field_type,
+              value_type);
+          return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+        }
       }
     }
   }

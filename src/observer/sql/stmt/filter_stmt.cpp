@@ -18,6 +18,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/filter_stmt.h"
 #include "storage/common/db.h"
 #include "storage/common/table.h"
+#include "util/util.h"
 
 FilterStmt::~FilterStmt()
 {
@@ -33,7 +34,7 @@ RC FilterStmt::create(Db *db, Table *default_table, std::unordered_map<std::stri
   RC rc = RC::SUCCESS;
   stmt = nullptr;
 
-  FilterStmt *tmp_stmt = new FilterStmt();
+  auto tmp_stmt = new FilterStmt();
   for (int i = 0; i < condition_num; i++) {
     FilterUnit *filter_unit = nullptr;
     rc = create_filter_unit(db, default_table, tables, conditions[i], filter_unit);
@@ -99,8 +100,19 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
       return rc;
     }
     left = new FieldExpr(table, field);
-  } else {
-    left = new ValueExpr(condition.left_value);
+    if (!condition.right_is_attr) {
+      if (field->type() == DATES && condition.right_value.type == CHARS) {
+        int date;
+        rc = char2date((const char *)condition.right_value.data, &date);
+        if (rc != RC::SUCCESS) {
+          return rc;
+        }
+        auto value = &const_cast<Condition &>(condition).right_value;
+        value->type = DATES;
+        memcpy(value->data, &date, sizeof(date));
+        right = new ValueExpr(*value);
+      }
+    }
   }
 
   if (condition.right_is_attr) {
@@ -113,7 +125,26 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
       return rc;
     }
     right = new FieldExpr(table, field);
-  } else {
+    if (!condition.left_is_attr) {
+      if (field->type() == DATES && condition.left_value.type == CHARS) {
+        int date;
+        rc = char2date((const char *)condition.left_value.data, &date);
+        if (rc != RC::SUCCESS) {
+          return rc;
+        }
+        auto value = &const_cast<Condition &>(condition).left_value;
+        value->type = DATES;
+        memcpy(value->data, &date, sizeof(date));
+        left = new ValueExpr(*value);
+      }
+    }
+  }
+
+  if (left == nullptr) {
+    left = new ValueExpr(condition.left_value);
+  }
+
+  if (right == nullptr) {
     right = new ValueExpr(condition.right_value);
   }
 

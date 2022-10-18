@@ -36,8 +36,9 @@ std::string double2string(double v)
   return {buf, len};
 }
 
-int char2date(const char *chars)
+RC char2date(const char *chars, int *date)
 {
+  RC rc = RC::SUCCESS;
   std::stringstream input(chars);
   std::string token;
   char delim = '-';
@@ -54,7 +55,8 @@ int char2date(const char *chars)
   }
 
   double temp = year * pow(10, kMonthLen + kDayLen) + month * pow(10, kDayLen) + day;
-  return static_cast<int>(temp);
+  *date = static_cast<int>(temp);
+  return rc;
 }
 
 std::string date2string(int date)

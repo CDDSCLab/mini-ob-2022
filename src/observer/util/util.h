@@ -16,13 +16,15 @@ See the Mulan PSL v2 for more details. */
 
 #include <string>
 
+#include "rc.h"
+
 constexpr int kYearLen = 4;
 constexpr int kMonthLen = 2;
 constexpr int kDayLen = 2;
 
 std::string double2string(double v);
 
-int char2date(const char *chars);
+RC char2date(const char *chars, int *date);
 
 std::string date2string(int date);
 
