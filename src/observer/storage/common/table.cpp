@@ -124,18 +124,19 @@ RC Table::drop(const char *path, const char *name, const char *base_dir, CLogMan
 {
   LOG_INFO("Begin to drop table %s:%s", base_dir, name);
 
-  RC rc = RC::SUCCESS;
-
-  int fd = ::open(path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
-  if (-1 != fd || EEXIST != errno) {
-    LOG_ERROR("Failed to create table file, it has been created. %s, EEXIST, %s", path, strerror(errno));
-    return RC::SCHEMA_TABLE_NOT_EXIST;
+  RC rc = sync();
+  if (rc != RC::SUCCESS) {
+    return rc;
   }
 
-  unlink(path);
-
-  std::string data_file = table_data_file(base_dir, name);
   BufferPoolManager &bpm = BufferPoolManager::instance();
+  auto meta_file = table_meta_file(base_dir, name);
+  rc = bpm.delete_file(meta_file.c_str());
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Failed to delete disk buffer pool of data file. file name=%s", meta_file.c_str());
+    return rc;
+  }
+  auto data_file = table_data_file(base_dir, name);
   rc = bpm.delete_file(data_file.c_str());
   if (rc != RC::SUCCESS) {
     LOG_ERROR("Failed to delete disk buffer pool of data file. file name=%s", data_file.c_str());
@@ -143,8 +144,17 @@ RC Table::drop(const char *path, const char *name, const char *base_dir, CLogMan
   }
 
   for (const auto &index : indexes_) {
+    rc = dynamic_cast<BplusTreeIndex *>(index)->close();
     std::string index_file = table_index_file(base_dir_.c_str(), name, index->index_meta().name());
-    unlink(index_file.c_str());
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Failed to close b plus tree index");
+      return rc;
+    }
+    rc = bpm.delete_file(index_file.c_str());
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Failed to delete disk buffer pool of data file. file name=%s", index_file.c_str());
+      return rc;
+    }
   }
 
   LOG_INFO("Successfully drop table %s:%s", base_dir, name);
