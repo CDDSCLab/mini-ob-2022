@@ -40,7 +40,7 @@ typedef enum {
 } CompOp;
 
 // 属性值类型
-typedef enum { UNDEFINED, CHARS, INTS, FLOATS } AttrType;
+typedef enum { UNDEFINED, CHARS, INTS, FLOATS, DATES } AttrType;
 
 // 属性值
 typedef struct _Value {
@@ -106,7 +106,7 @@ typedef struct {
   size_t length;  // Length of attribute
 } AttrInfo;
 
-// struct of craete_table
+// struct of create_table
 typedef struct {
   char *relation_name;           // Relation name
   size_t attribute_count;        // Length of attribute
