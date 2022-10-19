@@ -55,6 +55,8 @@ QUOTE            [\'\"]
 [Ss][Ee][Ll][Ee][Cc][Tt]                             RETURN_TOKEN(SELECT);
 [Ff][Rr][Oo][Mm]                                     RETURN_TOKEN(FROM);
 [Ww][Hh][Ee][Rr][Ee]                                 RETURN_TOKEN(WHERE);
+[Ll][Ii][Kk][Ee]                                     RETURN_TOKEN(LIKE);
+[Nn][Oo][Tt]                                         RETURN_TOKEN(NOT);
 [Aa][Nn][Dd]                                         RETURN_TOKEN(AND);
 [Ii][Nn][Ss][Ee][rR][tT]                             RETURN_TOKEN(INSERT);
 [Ii][Nn][Tt][Oo]                                     RETURN_TOKEN(INTO);
@@ -83,7 +85,7 @@ QUOTE            [\'\"]
 "<"                                                  RETURN_TOKEN(LT);
 ">="                                                 RETURN_TOKEN(GE);
 ">"                                                  RETURN_TOKEN(GT);
-{QUOTE}[\40\42\47A-Za-z0-9_/\.\-]*{QUOTE}            yylval->string=strdup(yytext); RETURN_TOKEN(SSS);
+{QUOTE}[\40\42\47A-Za-z0-9_/\.\-\%]*{QUOTE}            yylval->string=strdup(yytext); RETURN_TOKEN(SSS);
 
 .                                                    printf("Unknown character [%c]\n",yytext[0]); return yytext[0];
 %%
