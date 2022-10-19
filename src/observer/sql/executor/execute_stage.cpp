@@ -133,6 +133,7 @@ void ExecuteStage::handle_request(common::StageEvent *event)
   SessionEvent *session_event = sql_event->session_event();
   Stmt *stmt = sql_event->stmt();
   Session *session = session_event->session();
+  Trx *trx = session->current_trx();
   Query *sql = sql_event->query();
 
   if (stmt != nullptr) {
@@ -202,8 +203,8 @@ void ExecuteStage::handle_request(common::StageEvent *event)
         do_clog_sync(sql_event);
       }
       case SCF_ROLLBACK: {
-        Trx *trx = session_event->get_client()->session->current_trx();
-        RC rc = trx->rollback();
+        Trx *current_trx = session_event->get_client()->session->current_trx();
+        RC rc = current_trx->rollback();
         session->set_trx_multi_operation_mode(false);
         session_event->set_response(strrc(rc));
       } break;
@@ -215,6 +216,12 @@ void ExecuteStage::handle_request(common::StageEvent *event)
       default: {
         LOG_ERROR("Unsupported command=%d\n", sql->flag);
       }
+    }
+  }
+  if (!session->is_trx_multi_operation_mode()) {
+    RC rc = trx->commit();
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Failed to commit trx. rc=%d:%s", rc, strrc(rc));
     }
   }
 }
