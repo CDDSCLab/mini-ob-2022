@@ -91,6 +91,8 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
 
   Expression *left = nullptr;
   Expression *right = nullptr;
+  AttrType left_type = UNDEFINED;
+  AttrType right_type = UNDEFINED;
   if (condition.left_is_attr) {
     Table *table = nullptr;
     const FieldMeta *field = nullptr;
@@ -100,6 +102,7 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
       return rc;
     }
     left = new FieldExpr(table, field);
+    left_type = field->type();
     if (!condition.right_is_attr) {
       if (field->type() == DATES && condition.right_value.type == CHARS) {
         int date;
@@ -125,6 +128,7 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
       return rc;
     }
     right = new FieldExpr(table, field);
+    right_type = field->type();
     if (!condition.left_is_attr) {
       if (field->type() == DATES && condition.left_value.type == CHARS) {
         int date;
@@ -142,10 +146,20 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
 
   if (left == nullptr) {
     left = new ValueExpr(condition.left_value);
+    left_type = condition.left_value.type;
   }
 
   if (right == nullptr) {
     right = new ValueExpr(condition.right_value);
+    right_type = condition.right_value.type;
+  }
+
+  if (comp == LIKE_OP || comp == NOT_LIKE_OP) {
+    if (condition.right_is_attr) {
+      return RC::INVALID_ARGUMENT;
+    } else if (left_type != CHARS || right_type != CHARS) {
+      return RC::INVALID_ARGUMENT;
+    }
   }
 
   filter_unit = new FilterUnit;

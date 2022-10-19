@@ -11,9 +11,11 @@ See the Mulan PSL v2 for more details. */
 //
 // Created by WangYunlai on 2022/6/27.
 //
+#include "sql/operator/predicate_operator.h"
+
+#include <regex>
 
 #include "common/log/log.h"
-#include "sql/operator/predicate_operator.h"
 #include "storage/record/record.h"
 #include "sql/stmt/filter_stmt.h"
 #include "storage/common/field.h"
@@ -74,36 +76,63 @@ bool PredicateOperator::do_predicate(RowTuple &tuple)
     left_expr->get_value(tuple, left_cell);
     right_expr->get_value(tuple, right_cell);
 
-    const int compare = left_cell.compare(right_cell);
     bool filter_result = false;
-    switch (comp) {
-      case EQUAL_TO: {
-        filter_result = (0 == compare);
-      } break;
-      case LESS_EQUAL: {
-        filter_result = (compare <= 0);
-      } break;
-      case NOT_EQUAL: {
-        filter_result = (compare != 0);
-      } break;
-      case LESS_THAN: {
-        filter_result = (compare < 0);
-      } break;
-      case GREAT_EQUAL: {
-        filter_result = (compare >= 0);
-      } break;
-      case GREAT_THAN: {
-        filter_result = (compare > 0);
-      } break;
-      default: {
-        LOG_WARN("invalid compare type: %d", comp);
-      } break;
+    if (comp == LIKE_OP) {
+      filter_result = like(left_cell, right_cell);
+    } else if (comp == NOT_LIKE_OP) {
+      filter_result = !like(left_cell, right_cell);
+    } else {
+      const int compare = left_cell.compare(right_cell);
+      switch (comp) {
+        case EQUAL_TO: {
+          filter_result = (0 == compare);
+        } break;
+        case LESS_EQUAL: {
+          filter_result = (compare <= 0);
+        } break;
+        case NOT_EQUAL: {
+          filter_result = (compare != 0);
+        } break;
+        case LESS_THAN: {
+          filter_result = (compare < 0);
+        } break;
+        case GREAT_EQUAL: {
+          filter_result = (compare >= 0);
+        } break;
+        case GREAT_THAN: {
+          filter_result = (compare > 0);
+        } break;
+        default: {
+          LOG_WARN("invalid compare type: %d", comp);
+        } break;
+      }
     }
     if (!filter_result) {
       return false;
     }
   }
   return true;
+}
+
+bool PredicateOperator::like(const TupleCell &left_cell, const TupleCell &right_cell)
+{
+  std::stringstream ss;
+  for (int i = 0; i < right_cell.length(); ++i) {
+    const char &data = right_cell.data()[i];
+    if (data == '%') {
+      ss << kRegexStar;
+    } else if (data == '_') {
+      ss << kRegexDot;
+    } else {
+      ss << data;
+    }
+  }
+  std::regex regex(ss.str(), std::regex_constants::icase);
+  auto data = std::string(left_cell.data());
+  if (data.size() > left_cell.length()) {
+    data.resize(left_cell.length());
+  }
+  return std::regex_match(data, regex);
 }
 
 // int PredicateOperator::tuple_cell_num() const
