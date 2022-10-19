@@ -20,6 +20,7 @@ See the Mulan PSL v2 for more details. */
 #include <string.h>
 #include <sstream>
 #include <functional>
+#include <vector>
 
 #include "storage/record/record_manager.h"
 #include "storage/default/disk_buffer_pool.h"
@@ -69,9 +70,16 @@ private:
 
 class KeyComparator {
 public:
-  void init(AttrType type, int length)
+  void init(
+      AttrType type, int length, AttrType attrs_type[MAX_NUM] = {}, int attrs_length[MAX_NUM] = {}, int attrs_num = 0)
   {
     attr_comparator_.init(type, length);
+    other_attrs_num_ = attrs_num;
+    for (int i = 0; i < attrs_num; i++) {
+      AttrComparator tmp;
+      tmp.init(attrs_type[i], attrs_length[i]);
+      other_attr_comparators_.emplace_back(tmp);
+    }
   }
 
   const AttrComparator &attr_comparator() const
@@ -79,20 +87,46 @@ public:
     return attr_comparator_;
   }
 
+  std::pair<int, int> compare_without_rid(const char *v1, const char *v2) const
+  {
+    int offset = 0;
+    int result = attr_comparator_(v1, v2);
+    offset = offset + attr_comparator_.attr_length();
+    if (result != 0) {
+      return {result, offset};
+    }
+
+    // 多列索引key比较
+    if (other_attrs_num_ != 0) {
+      for (int i = 0; i < other_attrs_num_; i++) {
+        result = other_attr_comparators_[i](v1 + offset, v2 + offset);
+        offset = offset + other_attr_comparators_[i].attr_length();
+        if (result != 0) {
+          return {result, offset};
+        }
+      }
+    }
+    return {result, offset};
+  }
+
   int operator()(const char *v1, const char *v2) const
   {
-    int result = attr_comparator_(v1, v2);
+    std::pair<int, int> a = compare_without_rid(v1, v2);
+    int result = a.first;
+    int offset = a.second;
     if (result != 0) {
       return result;
     }
 
-    const RID *rid1 = (const RID *)(v1 + attr_comparator_.attr_length());
-    const RID *rid2 = (const RID *)(v2 + attr_comparator_.attr_length());
+    const RID *rid1 = (const RID *)(v1 + offset);
+    const RID *rid2 = (const RID *)(v2 + offset);
     return RID::compare(rid1, rid2);
   }
 
 private:
   AttrComparator attr_comparator_;
+  std::vector<AttrComparator> other_attr_comparators_;
+  int other_attrs_num_ = 0;
 };
 
 class AttrPrinter {
@@ -142,9 +176,16 @@ private:
 
 class KeyPrinter {
 public:
-  void init(AttrType type, int length)
+  void init(
+      AttrType type, int length, AttrType attrs_type[MAX_NUM] = {}, int attrs_length[MAX_NUM] = {}, int attrs_num = 0)
   {
     attr_printer_.init(type, length);
+    other_attr_num_ = attrs_num;
+    for (int i = 0; i < attrs_num; i++) {
+      AttrPrinter tmp;
+      tmp.init(attrs_type[i], attrs_length[i]);
+      other_attr_printers_.emplace_back(tmp);
+    }
   }
 
   const AttrPrinter &attr_printer() const
@@ -154,16 +195,27 @@ public:
 
   std::string operator()(const char *v) const
   {
+    int offset = 0;
     std::stringstream ss;
     ss << "{key:" << attr_printer_(v) << ",";
+    offset += attr_printer_.attr_length();
 
-    const RID *rid = (const RID *)(v + attr_printer_.attr_length());
+    if (other_attr_num_ != 0) {
+      for (int i = 0; i < other_attr_num_; i++) {
+        ss << "{key:" << other_attr_printers_[i](v + offset) << ",";
+        offset += other_attr_printers_[i].attr_length();
+      }
+    }
+
+    const RID *rid = (const RID *)(v + offset);
     ss << "rid:{" << rid->to_string() << "}}";
     return ss.str();
   }
 
 private:
   AttrPrinter attr_printer_;
+  std::vector<AttrPrinter> other_attr_printers_;
+  int other_attr_num_ = 0;
 };
 
 /**
@@ -183,6 +235,11 @@ struct IndexFileHeader {
   int32_t attr_length;
   int32_t key_length;  // attr length + sizeof(RID)
   AttrType attr_type;
+
+  // add by us
+  int attrs_length[MAX_NUM];
+  AttrType attrs_type[MAX_NUM];
+  int attrs_num;
 
   const std::string to_string()
   {
@@ -393,8 +450,8 @@ public:
    * 此函数创建一个名为fileName的索引。
    * attrType描述被索引属性的类型，attrLength描述被索引属性的长度
    */
-  RC create(
-      const char *file_name, AttrType attr_type, int attr_length, int internal_max_size = -1, int leaf_max_size = -1);
+  RC create(const char *file_name, AttrType attr_type, int attr_length, int internal_max_size = -1,
+      int leaf_max_size = -1, std::vector<FieldMeta> other_field_meta = {});
 
   /**
    * 打开名为fileName的索引文件。
@@ -414,14 +471,16 @@ public:
    * 即向索引中插入一个值为（user_key，rid）的键值对
    * @note 这里假设user_key的内存大小与attr_length 一致
    */
-  RC insert_entry(const char *user_key, const RID *rid);
+  RC insert_entry(const char *user_key, const RID *rid, FieldMeta field_meta = {},
+      std::vector<FieldMeta> other_field_meta = {}, int isUnique = -1, int isCompound = -1);
 
   /**
    * 从IndexHandle句柄对应的索引中删除一个值为（*pData，rid）的索引项
    * @return RECORD_INVALID_KEY 指定值不存在
    * @note 这里假设user_key的内存大小与attr_length 一致
    */
-  RC delete_entry(const char *user_key, const RID *rid);
+  RC delete_entry(const char *user_key, const RID *rid, FieldMeta field_meta = {},
+      std::vector<FieldMeta> other_field_meta = {}, int isCompound = -1);
 
   bool is_empty() const;
 
@@ -454,7 +513,7 @@ private:
   bool validate_node_recursive(Frame *frame);
 
 protected:
-  RC find_leaf(const char *key, Frame *&frame);
+  RC find_leaf(const char *key, Frame *&frame, int isUnique = -1);
   RC left_most_page(Frame *&frame);
   RC right_most_page(Frame *&frame);
   RC find_leaf_internal(const std::function<PageNum(InternalIndexNodeHandler &)> &child_page_getter, Frame *&frame);
@@ -482,6 +541,8 @@ protected:
   RC adjust_root(Frame *root_frame);
 
 private:
+  char *my_make_key(
+      const char *user_key, const RID &rid, FieldMeta field_meta, std::vector<FieldMeta> other_field_meta);
   char *make_key(const char *user_key, const RID &rid);
   void free_key(char *key);
 

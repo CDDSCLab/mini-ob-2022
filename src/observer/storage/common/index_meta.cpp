@@ -23,28 +23,64 @@ See the Mulan PSL v2 for more details. */
 const static Json::StaticString FIELD_NAME("name");
 const static Json::StaticString FIELD_FIELD_NAME("field_name");
 
-RC IndexMeta::init(const char *name, const FieldMeta &field)
+const static Json::StaticString FIELD_ISUNIQUE("isUnique");
+const static Json::StaticString FIELD_ISCOMPOUND("isCompound");
+const static Json::StaticString FIELD_NAMES("field_names");
+
+RC IndexMeta::init(
+    const char *name, const FieldMeta &field, int isUnique, int isCompound, std::vector<std::string> fields)
 {
-  if (common::is_blank(name)) {
-    LOG_ERROR("Failed to init index, name is empty.");
+  if (nullptr == name || common::is_blank(name)) {
     return RC::INVALID_ARGUMENT;
+  }
+  for (size_t i = 0; i < fields.size(); i++) {
+    if (common::is_blank(fields[i].c_str())) {
+      return RC::INVALID_ARGUMENT;
+    }
   }
 
   name_ = name;
   field_ = field.name();
+  isUnique_ = isUnique;
+  isCompound_ = isCompound;
+  fields_ = fields;
   return RC::SUCCESS;
+}
+
+int IndexMeta::queryIsUnique() const
+{
+  return isUnique_;
+}
+
+int IndexMeta::queryIsCompound() const
+{
+  return isCompound_;
+}
+
+std::vector<std::string> IndexMeta::getOtherFields() const
+{
+  return fields_;
 }
 
 void IndexMeta::to_json(Json::Value &json_value) const
 {
   json_value[FIELD_NAME] = name_;
   json_value[FIELD_FIELD_NAME] = field_;
+
+  json_value[FIELD_ISUNIQUE] = isUnique_;
+  json_value[FIELD_ISCOMPOUND] = isCompound_;
+  for (size_t i = 0; i < fields_.size(); i++) {
+    json_value[FIELD_NAMES].append(fields_[i]);
+  }
 }
 
 RC IndexMeta::from_json(const TableMeta &table, const Json::Value &json_value, IndexMeta &index)
 {
   const Json::Value &name_value = json_value[FIELD_NAME];
   const Json::Value &field_value = json_value[FIELD_FIELD_NAME];
+  const Json::Value &isUnique = json_value[FIELD_ISUNIQUE];
+  const Json::Value &isCompound = json_value[FIELD_ISCOMPOUND];
+  const Json::Value &field_names = json_value[FIELD_NAMES];
   if (!name_value.isString()) {
     LOG_ERROR("Index name is not a string. json value=%s", name_value.toStyledString().c_str());
     return RC::GENERIC_ERROR;
@@ -63,7 +99,12 @@ RC IndexMeta::from_json(const TableMeta &table, const Json::Value &json_value, I
     return RC::SCHEMA_FIELD_MISSING;
   }
 
-  return index.init(name_value.asCString(), *field);
+  std::vector<std::string> tmp;
+  for (int i = 0; i < field_names.size(); i++) {
+    tmp.push_back(field_names[i].asString());
+  }
+
+  return index.init(name_value.asCString(), *field, isUnique.asInt(), isCompound.asInt(), tmp);
 }
 
 const char *IndexMeta::name() const

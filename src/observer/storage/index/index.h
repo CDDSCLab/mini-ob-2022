@@ -52,11 +52,12 @@ public:
   virtual RC sync() = 0;
 
 protected:
-  RC init(const IndexMeta &index_meta, const FieldMeta &field_meta);
+  RC init(const IndexMeta &index_meta, const FieldMeta &field_meta, std::vector<FieldMeta> other_field_meta = {});
 
 protected:
   IndexMeta index_meta_;
-  FieldMeta field_meta_;  /// 当前实现仅考虑一个字段的索引
+  FieldMeta field_meta_;  /// 当前实现考虑多个字段的索引
+  std::vector<FieldMeta> other_field_meta_;
 };
 
 class IndexScanner {

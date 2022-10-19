@@ -163,11 +163,29 @@ const IndexMeta *TableMeta::index(const char *name) const
 const IndexMeta *TableMeta::find_index_by_field(const char *field) const
 {
   for (const IndexMeta &index : indexes_) {
-    if (0 == strcmp(index.field(), field)) {
+    if (0 == strcmp(index.field(), field) && index.queryIsCompound() == 0) {
       return &index;
     }
   }
   return nullptr;
+}
+
+int TableMeta::find_index_by_field(const char *field, char *attribute_names[MAX_NUM], int attr_num) const
+{
+  for (const IndexMeta &index : indexes_) {
+    if (index.queryIsCompound() == 1 && index.getOtherFields().size() == attr_num - 1 &&
+        0 == strcmp(index.field(), field)) {
+      int i = 0;
+      for (; i < attr_num - 1; i++) {
+        if (strcmp(index.getOtherFields()[i].c_str(), attribute_names[i]) != 0) {
+          break;
+        }
+      }
+      if (i == attr_num - 1)
+        return 1;
+    }
+  }
+  return 0;
 }
 
 const IndexMeta *TableMeta::index(int i) const

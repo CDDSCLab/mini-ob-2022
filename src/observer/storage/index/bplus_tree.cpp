@@ -750,7 +750,7 @@ RC BplusTreeHandler::sync()
 }
 
 RC BplusTreeHandler::create(const char *file_name, AttrType attr_type, int attr_length, int internal_max_size /* = -1*/,
-    int leaf_max_size /* = -1 */)
+    int leaf_max_size /* = -1 */, std::vector<FieldMeta> other_field_meta)
 {
   BufferPoolManager &bpm = BufferPoolManager::instance();
   RC rc = bpm.create_file(file_name);
@@ -801,6 +801,14 @@ RC BplusTreeHandler::create(const char *file_name, AttrType attr_type, int attr_
   file_header->leaf_max_size = leaf_max_size;
   file_header->root_page = BP_INVALID_PAGE_NUM;
 
+  // add by us
+  for (int i = 0; i < other_field_meta.size(); i++) {
+    file_header->attrs_length[i] = other_field_meta[i].len();
+    file_header->attrs_type[i] = other_field_meta[i].type();
+    file_header->attrs_num = file_header->attrs_num + 1;
+    file_header->key_length = file_header->key_length + other_field_meta[i].len();
+  }
+
   header_frame->mark_dirty();
 
   disk_buffer_pool_ = bp;
@@ -816,7 +824,11 @@ RC BplusTreeHandler::create(const char *file_name, AttrType attr_type, int attr_
     return RC::NOMEM;
   }
 
-  key_comparator_.init(file_header->attr_type, file_header->attr_length);
+  key_comparator_.init(file_header->attr_type,
+      file_header->attr_length,
+      file_header->attrs_type,
+      file_header->attrs_length,
+      file_header->attrs_num);
   key_printer_.init(file_header->attr_type, file_header->attr_length);
   LOG_INFO("Successfully create index %s", file_name);
   return RC::SUCCESS;
@@ -860,7 +872,11 @@ RC BplusTreeHandler::open(const char *file_name)
   // close old page_handle
   disk_buffer_pool->unpin_page(frame);
 
-  key_comparator_.init(file_header_.attr_type, file_header_.attr_length);
+  key_comparator_.init(file_header_.attr_type,
+      file_header_.attr_length,
+      file_header_.attrs_type,
+      file_header_.attrs_length,
+      file_header_.attrs_num);
   key_printer_.init(file_header_.attr_type, file_header_.attr_length);
   LOG_INFO("Successfully open index %s", file_name);
   return RC::SUCCESS;
@@ -1105,7 +1121,7 @@ bool BplusTreeHandler::is_empty() const
   return file_header_.root_page == BP_INVALID_PAGE_NUM;
 }
 
-RC BplusTreeHandler::find_leaf(const char *key, Frame *&frame)
+RC BplusTreeHandler::find_leaf(const char *key, Frame *&frame, int isUnique)
 {
   return find_leaf_internal(
       [&](InternalIndexNodeHandler &internal_node) {
@@ -1372,6 +1388,30 @@ RC BplusTreeHandler::create_new_tree(const char *key, const RID *rid)
   return rc;
 }
 
+char *BplusTreeHandler::my_make_key(
+    const char *user_key, const RID &rid, FieldMeta field_meta, std::vector<FieldMeta> other_field_meta)
+{
+  char *key = (char *)mem_pool_item_->alloc();
+  if (key == nullptr) {
+    LOG_WARN("Failed to alloc memory for key.");
+    return nullptr;
+  }
+  memcpy(key, user_key, file_header_.attr_length);
+
+  // add by us
+  int offset = 0;
+  memcpy(key, user_key + field_meta.offset(), file_header_.attr_length);
+  offset = offset + field_meta.len();
+  for (int i = 0; i < other_field_meta.size(); i++) {
+    memcpy(key + offset, user_key + other_field_meta[i].offset(), file_header_.attrs_length[i]);
+    offset = offset + other_field_meta[i].len();
+  }
+
+  // 最后加上RID
+  memcpy(key + offset, &rid, sizeof(rid));
+  return key;
+}
+
 char *BplusTreeHandler::make_key(const char *user_key, const RID &rid)
 {
   char *key = (char *)mem_pool_item_->alloc();
@@ -1389,14 +1429,21 @@ void BplusTreeHandler::free_key(char *key)
   mem_pool_item_->free(key);
 }
 
-RC BplusTreeHandler::insert_entry(const char *user_key, const RID *rid)
+RC BplusTreeHandler::insert_entry(const char *user_key, const RID *rid, FieldMeta field_meta,
+    std::vector<FieldMeta> other_field_meta, int isUnique, int isCompound)
 {
   if (user_key == nullptr || rid == nullptr) {
     LOG_WARN("Invalid arguments, key is empty or rid is empty");
     return RC::INVALID_ARGUMENT;
   }
 
-  char *key = make_key(user_key, *rid);
+  char *key;
+  if (isCompound == 1) {
+    key = my_make_key(user_key, *rid, field_meta, other_field_meta);
+  } else {
+    key = make_key(user_key, *rid);
+  }
+
   if (key == nullptr) {
     LOG_WARN("Failed to alloc memory for key.");
     return RC::NOMEM;
@@ -1409,7 +1456,7 @@ RC BplusTreeHandler::insert_entry(const char *user_key, const RID *rid)
   }
 
   Frame *frame;
-  RC rc = find_leaf(key, frame);
+  RC rc = find_leaf(key, frame, isUnique);
   if (rc != RC::SUCCESS) {
     LOG_WARN("Failed to find leaf %s. rc=%d:%s", rid->to_string().c_str(), rc, strrc(rc));
     mem_pool_item_->free(key);
@@ -1674,15 +1721,15 @@ RC BplusTreeHandler::delete_entry_internal(Frame *leaf_frame, const char *key)
   return coalesce_or_redistribute<LeafIndexNodeHandler>(leaf_frame);
 }
 
-RC BplusTreeHandler::delete_entry(const char *user_key, const RID *rid)
+RC BplusTreeHandler::delete_entry(
+    const char *user_key, const RID *rid, FieldMeta field_meta, std::vector<FieldMeta> other_field_meta, int isCompound)
 {
-  char *key = (char *)mem_pool_item_->alloc();
-  if (nullptr == key) {
-    LOG_WARN("Failed to alloc memory for key. size=%d", file_header_.key_length);
-    return RC::NOMEM;
+  char *key;
+  if (isCompound == 1) {
+    key = my_make_key(user_key, *rid, field_meta, other_field_meta);
+  } else {
+    key = make_key(user_key, *rid);
   }
-  memcpy(key, user_key, file_header_.attr_length);
-  memcpy(key + file_header_.attr_length, rid, sizeof(*rid));
 
   Frame *leaf_frame;
   RC rc = find_leaf(key, leaf_frame);
@@ -1722,8 +1769,9 @@ RC BplusTreeScanner::open(const char *left_user_key, int left_len, bool left_inc
 
   // 校验输入的键值是否是合法范围
   if (left_user_key && right_user_key) {
-    const auto &attr_comparator = tree_handler_.key_comparator_.attr_comparator();
-    const int result = attr_comparator(left_user_key, right_user_key);
+    const int result = tree_handler_.key_comparator_.compare_without_rid(left_user_key, right_user_key).first;
+    // const auto &attr_comparator = tree_handler_.key_comparator_.attr_comparator();
+    // const int result = attr_comparator(left_user_key, right_user_key);
     if (result > 0 ||  // left < right
                        // left == right but is (left,right)/[left,right) or (left,right]
         (result == 0 && (left_inclusive == false || right_inclusive == false))) {

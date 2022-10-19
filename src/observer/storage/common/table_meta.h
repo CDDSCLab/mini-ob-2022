@@ -51,6 +51,7 @@ public:
 
   const IndexMeta *index(const char *name) const;
   const IndexMeta *find_index_by_field(const char *field) const;
+  int find_index_by_field(const char *field, char *attribute_names[MAX_NUM], int attr_num) const;
   const IndexMeta *index(int i) const;
   int index_num() const;
 
