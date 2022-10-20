@@ -18,6 +18,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/update_stmt.h"
 #include "sql/stmt/delete_stmt.h"
 #include "sql/stmt/select_stmt.h"
+#include "sql/stmt/show_index_stmt.h"
 
 RC Stmt::create_stmt(Db *db, const Query &query, Stmt *&stmt)
 {
@@ -35,6 +36,9 @@ RC Stmt::create_stmt(Db *db, const Query &query, Stmt *&stmt)
     }
     case SCF_SELECT: {
       return SelectStmt::create(db, query.sstr.selection, stmt);
+    }
+    case SCF_SHOW_INDEX: {
+      return ShowIndexStmt::create(db, query.sstr.show_index, stmt);
     }
     default: {
       LOG_WARN("unknown query command");

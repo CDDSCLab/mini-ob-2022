@@ -26,6 +26,7 @@ enum class StmtType {
   DELETE,
   CREATE_TABLE,
   DROP_TABLE,
+  SHOW_INDEX,
   CREATE_INDEX,
   DROP_INDEX,
   SYNC,

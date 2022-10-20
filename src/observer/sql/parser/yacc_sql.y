@@ -159,6 +159,7 @@ command:
 	| create_table
 	| drop_table
 	| show_tables
+	| show_index
 	| desc_table
 	| create_index	
 	| drop_index
@@ -214,6 +215,13 @@ drop_table:		/*drop table 语句的语法解析树*/
 show_tables:
     SHOW TABLES SEMICOLON {
       CONTEXT->ssql->flag = SCF_SHOW_TABLES;
+    }
+    ;
+
+show_index:
+    SHOW INDEX FROM ID SEMICOLON {
+      CONTEXT->ssql->flag = SCF_SHOW_INDEX;
+	  show_index_init(&CONTEXT->ssql->sstr.show_index, $4);
     }
     ;
 
