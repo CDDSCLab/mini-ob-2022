@@ -723,7 +723,7 @@ RC Table::create_index(Trx *trx, const char *index_name, const char *attribute_n
   // 创建索引相关数据
   BplusTreeIndex *index = new BplusTreeIndex();
   std::string index_file = table_index_file(base_dir_.c_str(), name(), index_name);
-  rc = index->create(index_file.c_str(), new_index_meta, *field_meta, other_field_metas);
+  rc = index->create(index_file.c_str(), new_index_meta, *field_meta, other_field_metas, isUnique);
   if (rc != RC::SUCCESS) {
     delete index;
     LOG_ERROR("Failed to create bplus tree index. file name=%s, rc=%d:%s", index_file.c_str(), rc, strrc(rc));
@@ -736,6 +736,7 @@ RC Table::create_index(Trx *trx, const char *index_name, const char *attribute_n
   if (rc != RC::SUCCESS) {
     // rollback
     delete index;
+    trx->rollback();
     LOG_ERROR("Failed to insert index to all records. table=%s, rc=%d:%s", name(), rc, strrc(rc));
     return rc;
   }

@@ -24,7 +24,7 @@ public:
   virtual ~BplusTreeIndex() noexcept;
 
   RC create(const char *file_name, const IndexMeta &index_meta, const FieldMeta &field_meta,
-      std::vector<const FieldMeta *> other_field_metas);
+      std::vector<const FieldMeta *> other_field_metas = {}, size_t isUnique = 0);
   RC open(const char *file_name, const IndexMeta &index_meta, const FieldMeta &field_meta,
       std::vector<FieldMeta> other_field_meta);
   RC close();
@@ -43,6 +43,7 @@ public:
 private:
   bool inited_ = false;
   BplusTreeHandler index_handler_;
+  size_t isUnique_ = 0;
 };
 
 class BplusTreeIndexScanner : public IndexScanner {

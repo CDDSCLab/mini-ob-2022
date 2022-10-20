@@ -750,8 +750,9 @@ RC BplusTreeHandler::sync()
 }
 
 RC BplusTreeHandler::create(const char *file_name, AttrType attr_type, int attr_length, int internal_max_size /* = -1*/,
-    int leaf_max_size /* = -1 */, std::vector<FieldMeta> other_field_meta)
+    int leaf_max_size /* = -1 */, std::vector<FieldMeta> other_field_meta, size_t isUnique)
 {
+  isUnique_ = isUnique;
   BufferPoolManager &bpm = BufferPoolManager::instance();
   RC rc = bpm.create_file(file_name);
   if (rc != RC::SUCCESS) {
@@ -802,6 +803,7 @@ RC BplusTreeHandler::create(const char *file_name, AttrType attr_type, int attr_
   file_header->root_page = BP_INVALID_PAGE_NUM;
 
   // add by us
+  file_header->isUnique = isUnique;
   for (int i = 0; i < other_field_meta.size(); i++) {
     file_header->attrs_length[i] = other_field_meta[i].len();
     file_header->attrs_type[i] = other_field_meta[i].type();
@@ -828,7 +830,8 @@ RC BplusTreeHandler::create(const char *file_name, AttrType attr_type, int attr_
       file_header->attr_length,
       file_header->attrs_type,
       file_header->attrs_length,
-      file_header->attrs_num);
+      file_header->attrs_num,
+      isUnique);
   key_printer_.init(file_header->attr_type, file_header->attr_length);
   LOG_INFO("Successfully create index %s", file_name);
   return RC::SUCCESS;
@@ -876,7 +879,8 @@ RC BplusTreeHandler::open(const char *file_name)
       file_header_.attr_length,
       file_header_.attrs_type,
       file_header_.attrs_length,
-      file_header_.attrs_num);
+      file_header_.attrs_num,
+      file_header_.isUnique);
   key_printer_.init(file_header_.attr_type, file_header_.attr_length);
   LOG_INFO("Successfully open index %s", file_name);
   return RC::SUCCESS;
@@ -1396,15 +1400,14 @@ char *BplusTreeHandler::my_make_key(
     LOG_WARN("Failed to alloc memory for key.");
     return nullptr;
   }
-  memcpy(key, user_key, file_header_.attr_length);
+  memcpy(key, user_key + field_meta.offset(), file_header_.attr_length);
 
   // add by us
   int offset = 0;
-  memcpy(key, user_key + field_meta.offset(), file_header_.attr_length);
-  offset = offset + field_meta.len();
+  offset = offset + file_header_.attr_length;
   for (int i = 0; i < other_field_meta.size(); i++) {
     memcpy(key + offset, user_key + other_field_meta[i].offset(), file_header_.attrs_length[i]);
-    offset = offset + other_field_meta[i].len();
+    offset = offset + file_header_.attrs_length[i];
   }
 
   // 最后加上RID
@@ -1441,7 +1444,7 @@ RC BplusTreeHandler::insert_entry(const char *user_key, const RID *rid, FieldMet
   if (isCompound == 1) {
     key = my_make_key(user_key, *rid, field_meta, other_field_meta);
   } else {
-    key = make_key(user_key, *rid);
+    key = make_key(user_key + field_meta.offset(), *rid);
   }
 
   if (key == nullptr) {
@@ -1728,7 +1731,7 @@ RC BplusTreeHandler::delete_entry(
   if (isCompound == 1) {
     key = my_make_key(user_key, *rid, field_meta, other_field_meta);
   } else {
-    key = make_key(user_key, *rid);
+    key = make_key(user_key + field_meta.offset(), *rid);
   }
 
   Frame *leaf_frame;

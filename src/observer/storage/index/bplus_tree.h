@@ -26,6 +26,7 @@ See the Mulan PSL v2 for more details. */
 #include "storage/default/disk_buffer_pool.h"
 #include "sql/parser/parse_defs.h"
 #include "util/comparator.h"
+#include "common/log/log.h"
 
 #define EMPTY_RID_PAGE_NUM -1
 #define EMPTY_RID_SLOT_NUM -1
@@ -70,9 +71,10 @@ private:
 
 class KeyComparator {
 public:
-  void init(
-      AttrType type, int length, AttrType attrs_type[MAX_NUM] = {}, int attrs_length[MAX_NUM] = {}, int attrs_num = 0)
+  void init(AttrType type, int length, AttrType attrs_type[MAX_NUM] = {}, int attrs_length[MAX_NUM] = {},
+      int attrs_num = 0, size_t isUnique = 0)
   {
+    isUnique_ = isUnique;
     attr_comparator_.init(type, length);
     other_attrs_num_ = attrs_num;
     for (int i = 0; i < attrs_num; i++) {
@@ -118,6 +120,10 @@ public:
       return result;
     }
 
+    if (isUnique_ == 1) {
+      return result;
+    }
+
     const RID *rid1 = (const RID *)(v1 + offset);
     const RID *rid2 = (const RID *)(v2 + offset);
     return RID::compare(rid1, rid2);
@@ -127,6 +133,7 @@ private:
   AttrComparator attr_comparator_;
   std::vector<AttrComparator> other_attr_comparators_;
   int other_attrs_num_ = 0;
+  size_t isUnique_ = 0;
 };
 
 class AttrPrinter {
@@ -235,6 +242,7 @@ struct IndexFileHeader {
   int32_t attr_length;
   int32_t key_length;  // attr length + sizeof(RID)
   AttrType attr_type;
+  size_t isUnique = 0;
 
   // add by us
   int attrs_length[MAX_NUM];
@@ -451,7 +459,7 @@ public:
    * attrType描述被索引属性的类型，attrLength描述被索引属性的长度
    */
   RC create(const char *file_name, AttrType attr_type, int attr_length, int internal_max_size = -1,
-      int leaf_max_size = -1, std::vector<FieldMeta> other_field_meta = {});
+      int leaf_max_size = -1, std::vector<FieldMeta> other_field_meta = {}, size_t isUnique = 0);
 
   /**
    * 打开名为fileName的索引文件。
@@ -555,6 +563,7 @@ protected:
   KeyPrinter key_printer_;
 
   common::MemPoolItem *mem_pool_item_ = nullptr;
+  size_t isUnique_ = 0;
 
 private:
   friend class BplusTreeScanner;

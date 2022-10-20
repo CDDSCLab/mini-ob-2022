@@ -21,11 +21,13 @@ BplusTreeIndex::~BplusTreeIndex() noexcept
 }
 
 RC BplusTreeIndex::create(const char *file_name, const IndexMeta &index_meta, const FieldMeta &field_meta,
-    std::vector<const FieldMeta *> other_field_metas)
+    std::vector<const FieldMeta *> other_field_metas, size_t isUnique)
 {
   if (inited_) {
     return RC::RECORD_OPENNED;
   }
+
+  isUnique_ = isUnique;
 
   // mine 先初始化一个最基本的Index
   std::vector<FieldMeta> tmp;
@@ -38,7 +40,7 @@ RC BplusTreeIndex::create(const char *file_name, const IndexMeta &index_meta, co
   }
 
   // mine 创建索引文件和初始化B+树索引根节点
-  rc = index_handler_.create(file_name, field_meta.type(), field_meta.len(), -1, -1, tmp);
+  rc = index_handler_.create(file_name, field_meta.type(), field_meta.len(), -1, -1, tmp, isUnique);
   if (RC::SUCCESS != rc) {
     return rc;
   }
