@@ -17,6 +17,7 @@ See the Mulan PSL v2 for more details. */
 #include "storage/common/db.h"
 #include "storage/common/table.h"
 #include "util/util.h"
+#include "util/typecast.h"
 
 InsertStmt::InsertStmt(Table *table, const Value *values, int value_amount, int group_num, const InsertGroup *group)
     : table_(table), values_(values), value_amount_(value_amount), group_num_(group_num), groups_(group)
@@ -64,15 +65,21 @@ RC InsertStmt::create(Db *db, const Inserts &inserts, Stmt *&stmt)
       const AttrType value_type = values[j].type;
       if (field_type != value_type) {  // TODO try to convert the value type to field type
         auto value = const_cast<Value *>(values + j);
-        if (field_type == DATES && value_type == CHARS) {
-          value->type = DATES;
-          const char *chars = static_cast<const char *>(value->data);
-          int date;
-          RC rc = char2date(chars, &date);
-          if (rc != RC::SUCCESS) {
-            return rc;
-          }
-          memcpy(value->data, &date, sizeof(date));
+        RC rc = RC::SUCCESS;
+        if (field_type == INTS && value_type == FLOATS) {
+          rc = float2int(value);
+        } else if (field_type == INTS && value_type == CHARS) {
+          rc = char2int(value);
+        } else if (field_type == FLOATS && value_type == INTS) {
+          rc = int2float(value);
+        } else if (field_type == FLOATS && value_type == CHARS) {
+          rc = char2float(value);
+        } else if (field_type == CHARS && value_type == INTS) {
+          rc = int2char(value);
+        } else if (field_type == CHARS && value_type == FLOATS) {
+          rc = float2char(value);
+        } else if (field_type == DATES && value_type == CHARS) {
+          rc = char2date(value);
         } else {
           LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
               table_name,
@@ -80,6 +87,9 @@ RC InsertStmt::create(Db *db, const Inserts &inserts, Stmt *&stmt)
               field_type,
               value_type);
           return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+        }
+        if (rc != RC::SUCCESS) {
+          return rc;
         }
       }
     }
