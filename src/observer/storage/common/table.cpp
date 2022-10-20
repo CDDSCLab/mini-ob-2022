@@ -454,8 +454,8 @@ RC Table::update_record(Record *record, const char *attribute_name, const Value 
   RC rc = RC::SUCCESS;
   const int normal_field_start_index = table_meta_.sys_field_num();
   const int field_num = table_meta_.field_num();
-  for (int i = 0; i < field_num; ++i) {
-    const FieldMeta *field = table_meta_.field(i + normal_field_start_index);
+  for (int i = normal_field_start_index; i < field_num; ++i) {
+    const FieldMeta *field = table_meta_.field(i);
     if (strcmp(field->name(), attribute_name) != 0) {
       continue;
     }
