@@ -7,6 +7,8 @@
 #include "rc.h"
 #include "sql/parser/parse_defs.h"
 
+RC typecast(const AttrType &src, const AttrType &dst, Value *value);
+
 RC int2float(Value *value);
 
 RC int2char(Value *value);

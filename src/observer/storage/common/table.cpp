@@ -29,6 +29,7 @@ See the Mulan PSL v2 for more details. */
 #include "storage/index/bplus_tree_index.h"
 #include "storage/trx/trx.h"
 #include "storage/clog/clog.h"
+#include "util/typecast.h"
 
 Table::~Table()
 {
@@ -472,13 +473,21 @@ RC Table::update_record(Record *record, const char *attribute_name, const Value 
       continue;
     }
     // TODO(yueyang): support multi type.
-    if (field->type() != value.type) {
-      LOG_ERROR("Invalid value type. table name =%s, field name=%s, type=%d, but given=%d",
-          table_meta_.name(),
-          field->name(),
-          field->type(),
-          value.type);
-      return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+    auto field_type = field->type();
+    auto value_type = value.type;
+    if (field_type != value_type) {
+      rc = typecast(value_type, field_type, const_cast<Value *>(&value));
+      if (rc == RC::SCHEMA_FIELD_TYPE_MISMATCH) {
+        LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
+            name(),
+            field->name(),
+            field_type,
+            value_type);
+        return rc;
+      }
+      if (rc != RC::SUCCESS) {
+        return rc;
+      }
     }
     size_t copy_len = field->len();
     if (field->type() == CHARS) {

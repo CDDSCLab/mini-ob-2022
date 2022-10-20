@@ -9,6 +9,29 @@
 
 #include "util/util.h"
 
+RC typecast(const AttrType &src, const AttrType &dst, Value *value)
+{
+  RC rc = RC::SUCCESS;
+  if (src == INTS && dst == FLOATS) {
+    rc = int2float(value);
+  } else if (src == INTS && dst == CHARS) {
+    rc = int2char(value);
+  } else if (src == FLOATS && dst == INTS) {
+    rc = float2int(value);
+  } else if (src == FLOATS && dst == CHARS) {
+    rc = float2char(value);
+  } else if (src == CHARS && dst == INTS) {
+    rc = char2int(value);
+  } else if (src == CHARS && dst == FLOATS) {
+    rc = char2float(value);
+  } else if (src == CHARS && dst == DATES) {
+    rc = char2date(value);
+  } else {
+    return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+  }
+  return rc;
+}
+
 RC int2float(Value *value)
 {
   value->type = FLOATS;
