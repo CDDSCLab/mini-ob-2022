@@ -91,6 +91,7 @@ public:
   const char *name() const;
 
   const TableMeta &table_meta() const;
+  const std::vector<Index *> &get_index() const;
 
   RC sync();
 

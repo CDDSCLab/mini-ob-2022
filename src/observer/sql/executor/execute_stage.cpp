@@ -14,6 +14,7 @@ See the Mulan PSL v2 for more details. */
 
 #include <string>
 #include <sstream>
+#include <vector>
 
 #include "execute_stage.h"
 
@@ -156,6 +157,9 @@ void ExecuteStage::handle_request(common::StageEvent *event)
     }
   } else {
     switch (sql->flag) {
+      case SCF_SHOW_INDEX: {
+        do_show_index(sql_event);
+      } break;
       case SCF_HELP: {
         do_help(sql_event);
       } break;
@@ -531,6 +535,28 @@ RC ExecuteStage::do_create_index(SQLStageEvent *sql_event)
       create_index.attr_num);
   sql_event->session_event()->set_response(rc == RC::SUCCESS ? "SUCCESS\n" : "FAILURE\n");
   return rc;
+}
+
+RC ExecuteStage::do_show_index(SQLStageEvent *sql_event)
+{
+  Query *query = sql_event->query();
+  Db *db = sql_event->session_event()->session()->get_current_db();
+  const char *table_name = query->sstr.show_index.relation_name;
+  Table *table = db->find_table(table_name);
+
+  std::stringstream ss;
+  if (table == nullptr) {
+    ss << "FAILURE\n";
+    sql_event->session_event()->set_response(ss.str().c_str());
+    return RC::SCHEMA_TABLE_NOT_EXIST;
+  }
+  ss << "Table | Non_unique | Key_name | Seq_in_index | Column_name\n";
+  std::vector<Index *> indexes = table->get_index();
+  for (auto &index : indexes) {
+    index->index_meta().desc(ss, table_name);
+  }
+  sql_event->session_event()->set_response(ss.str().c_str());
+  return RC::SUCCESS;
 }
 
 RC ExecuteStage::do_show_tables(SQLStageEvent *sql_event)

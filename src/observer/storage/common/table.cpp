@@ -413,6 +413,11 @@ const TableMeta &Table::table_meta() const
   return table_meta_;
 }
 
+const std::vector<Index *> &Table::get_index() const
+{
+  return indexes_;
+}
+
 RC Table::make_record(int value_num, const Value *values, char *&record_out)
 {
   // 检查字段类型是否一致

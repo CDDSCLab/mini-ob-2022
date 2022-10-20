@@ -117,7 +117,15 @@ const char *IndexMeta::field() const
   return field_.c_str();
 }
 
-void IndexMeta::desc(std::ostream &os) const
+void IndexMeta::desc(std::ostream &os, std::string table_name) const
 {
-  os << "index name=" << name_ << ", field=" << field_;
+  int nonUnique = 1;
+  if (isUnique_ == 1) {
+    nonUnique = 0;
+  }
+
+  os << table_name << " | " << nonUnique << " | " << name_ << " | " << 1 << " | " << field_ << "\n";
+  for (int i = 0; i < fields_.size(); i++) {
+    os << table_name << " | " << nonUnique << " | " << name_ << " | " << i + 2 << " | " << fields_[i] << "\n";
+  }
 }

@@ -40,7 +40,7 @@ public:
   const char *name() const;
   const char *field() const;
 
-  void desc(std::ostream &os) const;
+  void desc(std::ostream &os, std::string table_name = "") const;
 
 public:
   void to_json(Json::Value &json_value) const;

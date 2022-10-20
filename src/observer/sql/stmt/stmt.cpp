@@ -37,9 +37,9 @@ RC Stmt::create_stmt(Db *db, const Query &query, Stmt *&stmt)
     case SCF_SELECT: {
       return SelectStmt::create(db, query.sstr.selection, stmt);
     }
-    case SCF_SHOW_INDEX: {
-      return ShowIndexStmt::create(db, query.sstr.show_index, stmt);
-    }
+    // case SCF_SHOW_INDEX: {
+    //   return ShowIndexStmt::create(db, query.sstr.show_index, stmt);
+    // }
     default: {
       LOG_WARN("unknown query command");
     } break;
