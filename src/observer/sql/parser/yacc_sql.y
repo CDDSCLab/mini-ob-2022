@@ -25,7 +25,7 @@ typedef struct ParserContext {
   size_t group_num;
   size_t every_group_count;
   size_t insert_groups[MAX_NUM*MAX_NUM];
-  size_t isUnique;
+  size_t attr_num;
 
 } ParserContext;
 
@@ -55,7 +55,7 @@ void yyerror(yyscan_t scanner, const char *str)
   // add by us
   context->group_num = 0;
   context->every_group_count=0;
-  context->isUnique = 0;
+  context->attr_num = 0;
 
   printf("parse sql failed. error=%s", str);
 }
@@ -80,6 +80,7 @@ ParserContext *get_context(yyscan_t scanner)
         TABLE
         TABLES
         INDEX
+        UNIQUE
         SELECT
         DESC
         SHOW
@@ -224,11 +225,38 @@ desc_table:
     ;
 
 create_index:		/*create index 语句的语法解析树*/
-    CREATE INDEX ID ON ID LBRACE ID RBRACE SEMICOLON 
-		{
-			CONTEXT->ssql->flag = SCF_CREATE_INDEX;//"create_index";
-			create_index_init(&CONTEXT->ssql->sstr.create_index, $3, $5, $7);
-		}
+    CREATE UNIQUE INDEX ID ON ID LBRACE attrone attr_index_list RBRACE SEMICOLON
+	{
+		CONTEXT->ssql->flag = SCF_CREATE_INDEX;
+		create_index_init(&CONTEXT->ssql->sstr.create_index, $4, $6, 1, CONTEXT->attr_num+1);
+		CONTEXT->attr_num = 0;
+	}
+    | CREATE INDEX ID ON ID LBRACE attrone attr_index_list RBRACE SEMICOLON
+	{
+		CONTEXT->ssql->flag = SCF_CREATE_INDEX;
+		create_index_init(&CONTEXT->ssql->sstr.create_index, $3, $5, 0, CONTEXT->attr_num+1);
+		CONTEXT->attr_num = 0;
+	}
+    ;
+attrone:
+    ID
+	{
+		create_index_first_attr(&CONTEXT->ssql->sstr.create_index, $1);
+	}
+    ;
+attr_index:
+    ID
+	{
+		create_index_append_attr(&CONTEXT->ssql->sstr.create_index, CONTEXT->attr_num, $1);
+		CONTEXT->attr_num++;
+	}
+    ;
+attr_index_list:
+    /* empty */
+    | COMMA attr_index attr_index_list
+	{
+
+	}
     ;
 
 drop_index:			/*drop index 语句的语法解析树*/
@@ -297,17 +325,16 @@ ID_get:
 	
 insert:				/*insert   语句的语法解析树*/
     INSERT INTO ID VALUES LBRACE value value_list RBRACE v_list SEMICOLON 
-		{
-			CONTEXT->ssql->flag=SCF_INSERT;
-
-	CONTEXT->insert_groups[CONTEXT->group_num] = CONTEXT->every_group_count;
-	CONTEXT->every_group_count=0;
+	{
+		CONTEXT->ssql->flag=SCF_INSERT;
+		CONTEXT->insert_groups[CONTEXT->group_num] = CONTEXT->every_group_count;
+		CONTEXT->every_group_count=0;
         CONTEXT->group_num = CONTEXT->group_num + 1;
 
-	inserts_init(&CONTEXT->ssql->sstr.insertion, $3, CONTEXT->values, CONTEXT->insert_groups, CONTEXT->group_num);
+		inserts_init(&CONTEXT->ssql->sstr.insertion, $3, CONTEXT->values, CONTEXT->insert_groups, CONTEXT->group_num);
 
-	//临时变量清零
-	CONTEXT->value_length=0;
+		//临时变量清零
+		CONTEXT->value_length=0;
     }
 
 v_list:
@@ -396,7 +423,7 @@ select_attr:
 			relation_attr_init(&attr, NULL, $1);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
 		}
-  	| ID DOT ID attr_list {
+    | ID DOT ID attr_list {
 			RelAttr attr;
 			relation_attr_init(&attr, $1, $3);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
