@@ -19,10 +19,6 @@ See the Mulan PSL v2 for more details. */
 #include "storage/common/db.h"
 #include "storage/common/table.h"
 
-UpdateStmt::UpdateStmt(Table *table, char *attribute_name, const Value *values, FilterStmt *filterStmt)
-    : table_(table), attribute_name_(attribute_name), values_(values), filter_stmt_(filterStmt)
-{}
-
 UpdateStmt::~UpdateStmt()
 {
   if (nullptr != filter_stmt_) {
@@ -46,15 +42,23 @@ RC UpdateStmt::create(Db *db, const Updates &update_sql, Stmt *&stmt)
     return RC::SCHEMA_TABLE_NOT_EXIST;
   }
 
-  const FieldMeta *field_meta = table->table_meta().field(update_sql.attribute_name);
-  if (nullptr == field_meta) {
-    LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), update_sql.attribute_name);
-    return RC::SCHEMA_FIELD_MISSING;
-  }
-
   std::unordered_map<std::string, Table *> table_map;
   table_map.insert(std::pair<std::string, Table *>(std::string(table_name), table));
 
+  std::vector<const FieldMeta *> update_fields;
+  std::vector<Value> values;
+  for (int i = update_sql.attr_num - 1; i >= 0; i--) {
+    const FieldMeta *field_meta = table->table_meta().field(update_sql.attribute_name[i]);
+    if (nullptr == field_meta) {
+      LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), update_sql.attribute_name[i]);
+      return RC::SCHEMA_FIELD_MISSING;
+    }
+    update_fields.push_back(field_meta);
+    values.push_back(update_sql.values[i]);
+  }
+
+
+  // create filter statement in `where` statement
   FilterStmt *filter_stmt = nullptr;
   RC rc = FilterStmt::create(db, table, &table_map, update_sql.conditions, update_sql.condition_num, filter_stmt);
   if (rc != RC::SUCCESS) {
@@ -62,6 +66,12 @@ RC UpdateStmt::create(Db *db, const Updates &update_sql, Stmt *&stmt)
     return rc;
   }
 
-  stmt = new UpdateStmt(table, update_sql.attribute_name, &update_sql.value, filter_stmt);
+  // everything alright
+  auto update_stmt = new UpdateStmt();
+  update_stmt->table_ = table;
+  update_stmt->update_fields_.swap(update_fields);
+  update_stmt->values_.swap(values);
+  update_stmt->filter_stmt_ = filter_stmt;
+  stmt = update_stmt;
   return rc;
 }

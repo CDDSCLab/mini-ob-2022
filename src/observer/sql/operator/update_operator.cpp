@@ -34,7 +34,7 @@ RC UpdateOperator::open()
 
     auto row_tuple = dynamic_cast<RowTuple *>(tuple);
     Record &record = row_tuple->record();
-    rc = table->update_record(trx_, &record, update_stmt_->attribute_name(), *update_stmt_->values());
+    rc = table->update_record(trx_, &record, update_stmt_->update_fields(), update_stmt_->values());
     if (rc != RC::SUCCESS) {
       LOG_WARN("failed to update record: %s", strrc(rc));
       return rc;

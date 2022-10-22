@@ -470,17 +470,12 @@ RC Table::make_record(int value_num, const Value *values, char *&record_out)
   return RC::SUCCESS;
 }
 
-RC Table::update_record(Record *record, const char *attribute_name, const Value &value)
+RC Table::update_record(Record *record, const std::vector<const FieldMeta *> &update_fields, const std::vector<Value> &values)
 {
   RC rc = RC::SUCCESS;
-  const int normal_field_start_index = table_meta_.sys_field_num();
-  const int field_num = table_meta_.field_num();
-  for (int i = normal_field_start_index; i < field_num; ++i) {
-    const FieldMeta *field = table_meta_.field(i);
-    if (strcmp(field->name(), attribute_name) != 0) {
-      continue;
-    }
-    // TODO(yueyang): support multi type.
+  for (int i = 0; i < update_fields.size(); i++) {
+    const FieldMeta *field = update_fields[i];
+    Value value = values[i];
     auto field_type = field->type();
     auto value_type = value.type;
     if (field_type != value_type) {
@@ -490,7 +485,7 @@ RC Table::update_record(Record *record, const char *attribute_name, const Value 
         continue;  // TEXT 的更新就到这儿了 （这样写不明显）
       }
 
-      rc = typecast(value_type, field_type, const_cast<Value *>(&value));
+      rc = typecast(value_type, field_type, &value);
       if (rc == RC::SCHEMA_FIELD_TYPE_MISMATCH) {
         LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
             name(),
@@ -850,7 +845,7 @@ static RC record_reader_delete_adapter(Record *record, void *context)
   return record_deleter.delete_record(record);
 }
 
-RC Table::update_record(Trx *trx, Record *record, const char *attribute_name, const Value &value)
+RC Table::update_record(Trx *trx, Record *record, const std::vector<const FieldMeta *> &update_fields, const std::vector<Value> &values)
 {
   RC rc = RC::SUCCESS;
 
@@ -865,7 +860,7 @@ RC Table::update_record(Trx *trx, Record *record, const char *attribute_name, co
     return rc;
   }
 
-  update_record(record, attribute_name, value);
+  update_record(record, update_fields, values);
   rc = record_handler_->update_record(record);
   if (rc != RC::SUCCESS) {
     LOG_ERROR(
