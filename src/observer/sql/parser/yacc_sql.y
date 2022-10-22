@@ -381,15 +381,18 @@ value_list:
 value:
     NUMBER{	
   		value_init_integer(&CONTEXT->values[CONTEXT->value_length++], $1);
+  		$$ = &CONTEXT->values[CONTEXT->value_length - 1];
 		CONTEXT->every_group_count++;
 		}
     |FLOAT{
   		value_init_float(&CONTEXT->values[CONTEXT->value_length++], $1);
+  		$$ = &CONTEXT->values[CONTEXT->value_length - 1];
 		CONTEXT->every_group_count++;
 		}
     |SSS {
 		$1 = substr($1,1,strlen($1)-2);
   		value_init_string(&CONTEXT->values[CONTEXT->value_length++], $1);
+  		$$ = &CONTEXT->values[CONTEXT->value_length - 1];
 		CONTEXT->every_group_count++;
 		}
     ;
@@ -404,16 +407,22 @@ delete:		/*  delete 语句的语法解析树*/
 			CONTEXT->condition_length = 0;	
     }
     ;
+
 update:			/*  update 语句的语法解析树*/
-    UPDATE ID SET ID EQ value where SEMICOLON
-		{
-			CONTEXT->ssql->flag = SCF_UPDATE;//"update";
-			Value *value = &CONTEXT->values[0];
-			updates_init(&CONTEXT->ssql->sstr.update, $2, $4, value, 
-					CONTEXT->conditions, CONTEXT->condition_length);
-			CONTEXT->condition_length = 0;
-		}
-    ;
+    UPDATE ID SET update_attr where SEMICOLON {
+		CONTEXT->ssql->flag = SCF_UPDATE;//"update";
+		updates_init(&CONTEXT->ssql->sstr.update, $2, CONTEXT->conditions, CONTEXT->condition_length);
+		CONTEXT->condition_length = 0;
+    };
+update_attr:
+    ID EQ value update_attr_list {
+		updates_append_attr(&CONTEXT->ssql->sstr.update, $1, $3);
+    };
+update_attr_list:
+    /* empty */
+    | COMMA ID EQ value update_attr_list {
+    		updates_append_attr(&CONTEXT->ssql->sstr.update, $2, $4);
+    };
 
 select:				/*  select 语句的语法解析树*/
     SELECT select_attr FROM ID rel_list where group SEMICOLON {
