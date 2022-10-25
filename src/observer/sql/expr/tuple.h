@@ -43,6 +43,14 @@ public:
   {
     this->alias_ = alias;
   }
+  void set_t(const char *t)
+  {
+    this->t_ = t;
+  }
+  const char *t() const
+  {
+    return t_;
+  }
   const char *alias() const
   {
     return alias_;
@@ -55,6 +63,7 @@ public:
 
 private:
   const char *alias_ = nullptr;
+  const char *t_ = nullptr;
   Expression *expression_ = nullptr;
 };
 

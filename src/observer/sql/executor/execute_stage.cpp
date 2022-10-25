@@ -260,6 +260,27 @@ void print_tuple_header(std::ostream &os, const ProjectOperator &oper)
     os << '\n';
   }
 }
+
+void my_print_tuple_header(std::ostream &os, const ProjectOperator &oper)
+{
+  const int cell_num = oper.tuple_cell_num();
+  const TupleCellSpec *cell_spec = nullptr;
+  for (int i = 0; i < cell_num; i++) {
+    oper.tuple_cell_spec_at(i, cell_spec);
+    if (i != 0) {
+      os << " | ";
+    }
+
+    if (cell_spec->alias()) {
+      os << cell_spec->t() << "." << cell_spec->alias();
+    }
+  }
+
+  if (cell_num > 0) {
+    os << '\n';
+  }
+}
+
 void tuple_to_string(std::ostream &os, const Tuple &tuple)
 {
   TupleCell cell;
@@ -451,7 +472,7 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
 
     project_oper.add_child(&join_ops[join_ops.size() - 1]);
     for (const Field &field : select_stmt->query_fields()) {
-      project_oper.add_projection(field.table(), field.meta());
+      project_oper.my_add_projection(field.table(), field.meta());
     }
     rc = project_oper.open();
     if (rc != RC::SUCCESS) {
@@ -460,7 +481,7 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
     }
 
     std::stringstream ss;
-    print_tuple_header(ss, project_oper);
+    my_print_tuple_header(ss, project_oper);
     while ((rc = project_oper.next()) == RC::SUCCESS) {
       // get current record
       // write to response
