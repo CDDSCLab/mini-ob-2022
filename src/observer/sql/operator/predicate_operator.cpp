@@ -76,6 +76,11 @@ bool PredicateOperator::do_predicate(RowTuple &tuple)
     left_expr->get_value(tuple, left_cell);
     right_expr->get_value(tuple, right_cell);
 
+    // add by Benevor
+    if (left_cell.attr_type() == UNDEFINED || right_cell.attr_type() == UNDEFINED) {
+      return true;
+    }
+
     bool filter_result = false;
     if (comp == LIKE_OP) {
       filter_result = like(left_cell, right_cell);

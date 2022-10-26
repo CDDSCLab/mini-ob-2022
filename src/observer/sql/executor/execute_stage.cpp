@@ -468,9 +468,12 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
       }
     }
 
+    auto final_pre = PredicateOperator(select_stmt->filter_stmt());
+    final_pre.add_child(&join_ops[join_ops.size() - 1]);
+
     ProjectOperator project_oper;
 
-    project_oper.add_child(&join_ops[join_ops.size() - 1]);
+    project_oper.add_child(&final_pre);
     for (const Field &field : select_stmt->query_fields()) {
       project_oper.my_add_projection(field.table(), field.meta());
     }
