@@ -127,6 +127,8 @@ ParserContext *get_context(yyscan_t scanner)
         GE
         NE
         LIKE
+		INNER
+		JOIN
 	NOT
 
 %union {
@@ -498,7 +500,20 @@ rel_list:
     | COMMA ID rel_list {	
 				selects_append_relation(&CONTEXT->ssql->sstr.selection, $2);
 		  }
+	| join{
+	}
     ;
+
+join:
+	INNER JOIN ID ON condition condition_list join_list{
+		selects_append_relation(&CONTEXT->ssql->sstr.selection, $3);
+			};
+join_list:
+	/* empty */
+	| INNER JOIN ID  ON condition condition_list join_list{
+		selects_append_relation(&CONTEXT->ssql->sstr.selection, $3);
+	};
+
 where:
     /* empty */ 
     | WHERE condition condition_list {	
