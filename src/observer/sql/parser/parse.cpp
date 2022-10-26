@@ -30,6 +30,12 @@ void relation_attr_init(RelAttr *relation_attr, const char *relation_name, const
     relation_attr->relation_name = nullptr;
   }
   relation_attr->attribute_name = strdup(attribute_name);
+  relation_attr->aggr_type = AGGR_NONE;
+}
+
+void relation_attr_aggr(RelAttr *relation_attr, AggrType aggr_type)
+{
+  relation_attr->aggr_type = aggr_type;
 }
 
 void relation_attr_destroy(RelAttr *relation_attr)
@@ -125,6 +131,16 @@ void selects_append_conditions(Selects *selects, Condition conditions[], size_t 
     selects->conditions[i] = conditions[i];
   }
   selects->condition_num = condition_num;
+}
+
+void selects_append_groups(Selects *selects, RelAttr *rel_attr)
+{
+  selects->group_attributes[selects->group_num++] = *rel_attr;
+}
+
+void selects_append_having(Selects *selects, Condition *condition)
+{
+  selects->having[selects->having_num++] = *condition;
 }
 
 void selects_destroy(Selects *selects)

@@ -23,21 +23,25 @@ See the Mulan PSL v2 for more details. */
 #define MAX_ERROR_MESSAGE 20
 #define MAX_DATA 50
 
+// 聚合类型
+typedef enum { AGGR_NONE, AGGR_MAX, AGGR_MIN, AGGR_COUNT, AGGR_AVG, AGGR_SUM } AggrType;
+
 // 属性结构体
-typedef struct {
+typedef struct _RelAttr {
   char *relation_name;   // relation name (may be NULL) 表名
   char *attribute_name;  // attribute name              属性名
+  AggrType aggr_type;    // aggregation type            聚合类型
 } RelAttr;
 
 typedef enum {
-  EQUAL_TO,     //"="         0
-  LESS_EQUAL,   //"<="        1
-  NOT_EQUAL,    //"<>"        2
-  LESS_THAN,    //"<"         3
-  GREAT_EQUAL,  //">="        4
-  GREAT_THAN,   //">"         5
-  LIKE_OP,      //"like"      6
-  NOT_LIKE_OP,  //"not like"  7
+  EQUAL_TO,     // "="          0
+  LESS_EQUAL,   // "<="         1
+  NOT_EQUAL,    // "<>"         2
+  LESS_THAN,    // "<"          3
+  GREAT_EQUAL,  // ">="         4
+  GREAT_THAN,   // ">"          5
+  LIKE_OP,      // "like"       6
+  NOT_LIKE_OP,  // "not like"   7
   NO_OP
 } CompOp;
 
@@ -64,12 +68,16 @@ typedef struct _Condition {
 
 // struct of select
 typedef struct {
-  size_t attr_num;                // Length of attrs in Select clause
-  RelAttr attributes[MAX_NUM];    // attrs in Select clause
-  size_t relation_num;            // Length of relations in Fro clause
-  char *relations[MAX_NUM];       // relations in From clause
-  size_t condition_num;           // Length of conditions in Where clause
-  Condition conditions[MAX_NUM];  // conditions in Where clause
+  size_t attr_num;                    // Length of attrs in Select clause
+  RelAttr attributes[MAX_NUM];        // attrs in Select clause
+  size_t relation_num;                // Length of relations in From clause
+  char *relations[MAX_NUM];           // relations in From clause
+  size_t condition_num;               // Length of conditions in Where clause
+  Condition conditions[MAX_NUM];      // conditions in Where clause
+  size_t group_num;                   // Length of group by in Select clause
+  RelAttr group_attributes[MAX_NUM];  // attrs in group by clause
+  size_t having_num;                  // Length of conditions in Where clause
+  Condition having[MAX_NUM];          // conditions in Having clause
 } Selects;
 
 typedef struct {
@@ -197,6 +205,7 @@ extern "C" {
 #endif  // __cplusplus
 
 void relation_attr_init(RelAttr *relation_attr, const char *relation_name, const char *attribute_name);
+void relation_attr_aggr(RelAttr *relation_attr, AggrType aggr_type);
 void relation_attr_destroy(RelAttr *relation_attr);
 
 void value_init_integer(Value *value, int v);
@@ -215,6 +224,8 @@ void selects_init(Selects *selects, ...);
 void selects_append_attribute(Selects *selects, RelAttr *rel_attr);
 void selects_append_relation(Selects *selects, const char *relation_name);
 void selects_append_conditions(Selects *selects, Condition conditions[], size_t condition_num);
+void selects_append_groups(Selects *selects, RelAttr *rel_attr);
+void selects_append_having(Selects *selects, Condition *condition);
 void selects_destroy(Selects *selects);
 
 // void inserts_init(Inserts *inserts, const char *relation_name, Value values[], size_t value_num, size_t group_num);
