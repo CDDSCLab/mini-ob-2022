@@ -25,7 +25,6 @@ public:
   JoinOperator(Operator *left, Operator *right, bool left_is_row)
       : left_(left), right_(right), left_is_row_(left_is_row)
   {
-    printf("new join operator\n");
     if (left_ == nullptr) {
       printf("left is null\n");
     }
@@ -43,7 +42,6 @@ public:
 
   ~JoinOperator() override
   {
-    printf("delete join operator\n");
     //    delete joined_tuple_;
   }
 
