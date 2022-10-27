@@ -442,11 +442,13 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   auto select_stmt = dynamic_cast<SelectStmt *>(sql_event->stmt());
   SessionEvent *session_event = sql_event->session_event();
   RC rc = RC::SUCCESS;
-  // >= 3 tables，有问题
+  // >= 2 tables
   if (select_stmt->tables().size() != 1) {
     std::vector<TableScanOperator *> scan_ops;
     std::vector<PredicateOperator> pred_ops;
     std::vector<JoinOperator> join_ops;
+    scan_ops.reserve(select_stmt->tables().size());
+    pred_ops.reserve(select_stmt->tables().size());
     join_ops.reserve(select_stmt->tables().size() - 1);
     for (size_t i = 0; i < select_stmt->tables().size(); i++) {
       scan_ops.emplace_back(new TableScanOperator(select_stmt->tables()[i]));
@@ -464,7 +466,7 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
       if (i == 0) {
         join_ops.emplace_back(JoinOperator(&pred_ops[0], &pred_ops[1], true));
       } else {
-        join_ops.emplace_back(JoinOperator(&join_ops[i - 1], &pred_ops[1 + 1], false));
+        join_ops.emplace_back(JoinOperator(&join_ops[i - 1], &pred_ops[i + 1], false));
       }
     }
 
