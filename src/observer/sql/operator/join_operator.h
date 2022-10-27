@@ -19,11 +19,13 @@ See the Mulan PSL v2 for more details. */
 #include "rc.h"
 #include <vector>
 
+class FilterStmt;
+
 // TODO fixme
 class JoinOperator : public Operator {
 public:
-  JoinOperator(Operator *left, Operator *right, bool left_is_row)
-      : left_(left), right_(right), left_is_row_(left_is_row)
+  JoinOperator(Operator *left, Operator *right, bool left_is_row, FilterStmt *filter_stmt)
+      : left_(left), right_(right), left_is_row_(left_is_row), filter_stmt_(filter_stmt)
   {
     if (left_ == nullptr) {
       printf("left is null\n");
@@ -50,6 +52,7 @@ public:
   RC close() override;
   Tuple *current_tuple() override;
   bool do_join(Tuple *left, Tuple *right);
+  bool do_predicate(RowTuple &tuple);
 
 private:
   Operator *left_ = nullptr;
@@ -57,6 +60,7 @@ private:
   bool round_done_ = true;
 
   JoinTuple joined_tuple_;
+  FilterStmt *filter_stmt_ = nullptr;
   bool left_is_row_ = false;
 
   std::vector<Tuple *> left_tuples_{};

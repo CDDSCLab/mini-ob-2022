@@ -464,9 +464,9 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
 
     for (size_t i = 0; i < select_stmt->tables().size() - 1; i++) {
       if (i == 0) {
-        join_ops.emplace_back(JoinOperator(&pred_ops[0], &pred_ops[1], true));
+        join_ops.emplace_back(JoinOperator(&pred_ops[0], &pred_ops[1], true, select_stmt->filter_stmt()));
       } else {
-        join_ops.emplace_back(JoinOperator(&join_ops[i - 1], &pred_ops[i + 1], false));
+        join_ops.emplace_back(JoinOperator(&join_ops[i - 1], &pred_ops[i + 1], false, select_stmt->filter_stmt()));
       }
     }
 
