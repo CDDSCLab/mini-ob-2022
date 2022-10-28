@@ -18,6 +18,7 @@ See the Mulan PSL v2 for more details. */
 
 #include "common/defs.h"
 #include "storage/common/table.h"
+#include "storage/common/text.h"
 #include "storage/common/table_meta.h"
 #include "common/log/log.h"
 #include "common/lang/string.h"
@@ -432,6 +433,13 @@ RC Table::make_record(int value_num, const Value *values, char *&record_out)
     const FieldMeta *field = table_meta_.field(i + normal_field_start_index);
     const Value &value = values[i];
     if (field->type() != value.type) {
+      if (field->type() == TEXTS && value.type == CHARS) {
+        int id;
+        insert_text(static_cast<char *>(value.data), &id);
+        memcpy(value.data, &id, sizeof(id));
+        continue;
+      }
+
       LOG_ERROR("Invalid value type. table name =%s, field name=%s, type=%d, but given=%d",
           table_meta_.name(),
           field->name(),
@@ -476,6 +484,12 @@ RC Table::update_record(Record *record, const char *attribute_name, const Value 
     auto field_type = field->type();
     auto value_type = value.type;
     if (field_type != value_type) {
+      if (field->type() == TEXTS && value_type == CHARS) {
+        int id = *(int *)(record->data() + field->offset());
+        update_text(id, static_cast<char *>(value.data));
+        continue;  // TEXT 的更新就到这儿了 （这样写不明显）
+      }
+
       rc = typecast(value_type, field_type, const_cast<Value *>(&value));
       if (rc == RC::SCHEMA_FIELD_TYPE_MISMATCH) {
         LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",

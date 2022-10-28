@@ -17,6 +17,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/log/log.h"
 #include "util/comparator.h"
 #include "util/util.h"
+#include "storage/common/text.h"
 
 void TupleCell::to_string(std::ostream &os) const
 {
@@ -39,6 +40,19 @@ void TupleCell::to_string(std::ostream &os) const
     case DATES: {
       os << date2string(*(int *)data_);
     } break;
+    case TEXTS: {
+      int id = *(int *)data_;
+      char *s = static_cast<char *>(malloc(sizeof(char) * TEXT_SIZE));
+      get_text(id, s);
+      int length = strlen(s);
+      for (int i = 0; i < length; i++) {
+        // if (data_[i] == '\0') {
+        //   break;
+        // }
+        os << s[i];
+      }
+      free(s);
+    }
     default: {
       LOG_WARN("unsupported attr type: %d", attr_type_);
     } break;

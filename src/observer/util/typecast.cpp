@@ -26,6 +26,8 @@ RC typecast(const AttrType &src, const AttrType &dst, Value *value)
     rc = char2float(value);
   } else if (src == CHARS && dst == DATES) {
     rc = char2date(value);
+  } else if (src == CHARS && dst == TEXTS) {
+    rc = SUCCESS;
   } else {
     return RC::SCHEMA_FIELD_TYPE_MISMATCH;
   }
