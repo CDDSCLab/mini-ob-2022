@@ -19,8 +19,6 @@ See the Mulan PSL v2 for more details. */
 #include <string>
 #include <sstream>
 
-#include "rc.h"
-
 std::string double2string(double v)
 {
   char buf[256];
@@ -97,4 +95,22 @@ bool is_legal_date(int year, int month, int day)
     }
   }
   return true;
+}
+
+std::string aggr_type_to_string(AggrType aggr_type)
+{
+  switch (aggr_type) {
+    case AGGR_NONE:
+      return "";
+    case AGGR_MAX:
+      return "MAX";
+    case AGGR_MIN:
+      return "MIN";
+    case AGGR_COUNT:
+      return "COUNT";
+    case AGGR_AVG:
+      return "AVG";
+    case AGGR_SUM:
+      return "SUM";
+  }
 }

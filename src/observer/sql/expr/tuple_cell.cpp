@@ -97,3 +97,32 @@ int TupleCell::compare(const TupleCell &other) const
   LOG_WARN("not supported");
   return -1;  // TODO return rc?
 }
+
+void TupleCell::plus(const TupleCell &other)
+{
+  if (this->attr_type_ == other.attr_type_) {
+    switch (this->attr_type_) {
+      case INTS: {
+        int result = *(int *)data_ + *(int *)other.data_;
+        memcpy(data_, &result, sizeof(result));
+      } break;
+      case FLOATS: {
+        float result = *(float *)data_ + *(float *)other.data_;
+        memcpy(data_, &result, sizeof(result));
+      } break;
+      case UNDEFINED:
+      case CHARS:
+      case DATES:
+        break;
+    }
+  } else {
+    if (this->attr_type_ == FLOATS && other.attr_type_ == INTS) {
+      float result = *(float *)data_ + *(int *)other.data_;
+      memcpy(data_, &result, sizeof(result));
+    } else if (this->attr_type_ == INTS && other.attr_type_ == FLOATS) {
+      float result = *(int *)data_ + *(float *)other.data_;
+      memcpy(data_, &result, sizeof(result));
+    }
+    // TODO(yueyang): implement
+  }
+}

@@ -48,6 +48,8 @@ public:
 
   int compare(const TupleCell &other) const;
 
+  void plus(const TupleCell &other);
+
   const char *data() const
   {
     return data_;
