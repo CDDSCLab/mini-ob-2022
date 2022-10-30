@@ -28,7 +28,7 @@ class Table;
 class TupleCellSpec {
 public:
   TupleCellSpec() = default;
-  TupleCellSpec(Expression *expr) : expression_(expr)
+  explicit TupleCellSpec(Expression *expr) : expression_(expr)
   {}
 
   ~TupleCellSpec()
@@ -73,7 +73,7 @@ public:
 class RowTuple : public Tuple {
 public:
   RowTuple() = default;
-  virtual ~RowTuple()
+  ~RowTuple() override
   {
     for (TupleCellSpec *spec : speces_) {
       delete spec;
@@ -125,7 +125,7 @@ public:
 
     const char *field_name = field.field_name();
     for (size_t i = 0; i < speces_.size(); ++i) {
-      const FieldExpr *field_expr = (const FieldExpr *)speces_[i]->expression();
+      const auto *field_expr = (const FieldExpr *)speces_[i]->expression();
       const Field &field = field_expr->field();
       if (0 == strcmp(field_name, field.field_name())) {
         return cell_at(i, cell);
@@ -172,10 +172,84 @@ private:
 };
 */
 
+class AggregateTuple : public Tuple {
+public:
+  AggregateTuple(const std::vector<Field> &aggr_fields, const std::vector<Field> &group_by_fields)
+  {
+    this->speces_.reserve(aggr_fields.size() + group_by_fields.size());
+    for (const auto &field : aggr_fields) {
+      speces_.push_back(new TupleCellSpec(new FieldExpr(field.table(), field.meta(), field.aggr_type())));
+    }
+    for (const auto &field : group_by_fields) {
+      speces_.push_back(new TupleCellSpec(new FieldExpr(field.table(), field.meta(), field.aggr_type())));
+    }
+  }
+  ~AggregateTuple() override
+  {
+    for (TupleCellSpec *spec : speces_) {
+      delete spec;
+    }
+    speces_.clear();
+  }
+
+  int cell_num() const override
+  {
+    return speces_.size();
+  }
+
+  RC cell_at(int index, TupleCell &cell) const override
+  {
+    if (index < 0 || index >= static_cast<int>(speces_.size())) {
+      LOG_WARN("invalid argument. index=%d", index);
+      return RC::INVALID_ARGUMENT;
+    }
+
+    cell = tuple_cells_[index];
+    return RC::SUCCESS;
+  }
+
+  RC find_cell(const Field &field, TupleCell &cell) const override
+  {
+    for (size_t i = 0; i < speces_.size(); ++i) {
+      const auto field_expr = (const FieldExpr *)speces_[i]->expression();
+      const Field &f = field_expr->field();
+      if (field.equal(f)) {
+        return cell_at(i, cell);
+      }
+    }
+    return RC::NOTFOUND;
+  }
+
+  RC cell_spec_at(int index, const TupleCellSpec *&spec) const override
+  {
+    if (index < 0 || index >= static_cast<int>(speces_.size())) {
+      LOG_WARN("invalid argument. index=%d", index);
+      return RC::INVALID_ARGUMENT;
+    }
+    spec = speces_[index];
+    return RC::SUCCESS;
+  }
+
+  void set_data(const std::vector<TupleCell> &aggr_cell, const std::vector<TupleCell> &group_by_cell)
+  {
+    tuple_cells_.clear();
+    for (const auto &cell : aggr_cell) {
+      tuple_cells_.emplace_back(cell);
+    }
+    for (const auto &cell : group_by_cell) {
+      tuple_cells_.emplace_back(cell);
+    }
+  }
+
+private:
+  std::vector<TupleCellSpec *> speces_;
+  std::vector<TupleCell> tuple_cells_;
+};
+
 class ProjectTuple : public Tuple {
 public:
   ProjectTuple() = default;
-  virtual ~ProjectTuple()
+  ~ProjectTuple() override
   {
     for (TupleCellSpec *spec : speces_) {
       delete spec;

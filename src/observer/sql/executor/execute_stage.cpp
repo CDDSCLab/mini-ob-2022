@@ -28,6 +28,7 @@ See the Mulan PSL v2 for more details. */
 #include "event/sql_event.h"
 #include "event/session_event.h"
 #include "sql/expr/tuple.h"
+#include "sql/operator/aggregation_operator.h"
 #include "sql/operator/table_scan_operator.h"
 #include "sql/operator/index_scan_operator.h"
 #include "sql/operator/predicate_operator.h"
@@ -64,7 +65,7 @@ ExecuteStage::~ExecuteStage()
 //! Parse properties, instantiate a stage object
 Stage *ExecuteStage::make_stage(const std::string &tag)
 {
-  ExecuteStage *stage = new (std::nothrow) ExecuteStage(tag.c_str());
+  auto stage = new (std::nothrow) ExecuteStage(tag.c_str());
   if (stage == nullptr) {
     LOG_ERROR("new ExecuteStage failed");
     return nullptr;
@@ -92,9 +93,9 @@ bool ExecuteStage::initialize()
 {
   LOG_TRACE("Enter");
 
-  std::list<Stage *>::iterator stgp = next_stage_list_.begin();
-  default_storage_stage_ = *(stgp++);
-  mem_storage_stage_ = *(stgp++);
+  auto iter = next_stage_list_.begin();
+  default_storage_stage_ = *(iter++);
+  mem_storage_stage_ = *(iter++);
 
   LOG_TRACE("Exit");
   return true;
@@ -115,7 +116,6 @@ void ExecuteStage::handle_event(StageEvent *event)
   handle_request(event);
 
   LOG_TRACE("Exit\n");
-  return;
 }
 
 void ExecuteStage::callback_event(StageEvent *event, CallbackContext *context)
@@ -125,12 +125,11 @@ void ExecuteStage::callback_event(StageEvent *event, CallbackContext *context)
   // here finish read all data from disk or network, but do nothing here.
 
   LOG_TRACE("Exit\n");
-  return;
 }
 
 void ExecuteStage::handle_request(common::StageEvent *event)
 {
-  SQLStageEvent *sql_event = static_cast<SQLStageEvent *>(event);
+  auto sql_event = dynamic_cast<SQLStageEvent *>(event);
   SessionEvent *session_event = sql_event->session_event();
   Stmt *stmt = sql_event->stmt();
   Session *session = session_event->session();
@@ -410,7 +409,7 @@ IndexScanOperator *try_to_create_index_scan_operator(FilterStmt *filter_stmt)
     } break;
   }
 
-  IndexScanOperator *oper = new IndexScanOperator(table, index, left_cell, left_inclusive, right_cell, right_inclusive);
+  auto oper = new IndexScanOperator(table, index, left_cell, left_inclusive, right_cell, right_inclusive);
 
   LOG_INFO("use index for scan: %s in table %s", index->index_meta().name(), table->name());
   return oper;
@@ -418,7 +417,7 @@ IndexScanOperator *try_to_create_index_scan_operator(FilterStmt *filter_stmt)
 
 RC ExecuteStage::do_select(SQLStageEvent *sql_event)
 {
-  SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
+  auto select_stmt = dynamic_cast<SelectStmt *>(sql_event->stmt());
   SessionEvent *session_event = sql_event->session_event();
   RC rc = RC::SUCCESS;
   if (select_stmt->tables().size() != 1) {
@@ -436,11 +435,18 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
 
   PredicateOperator pred_oper(select_stmt->filter_stmt());
   pred_oper.add_child(scan_oper);
+  AggregationOperator aggr_oper(select_stmt->aggr_fields(), select_stmt->group_by_fields());
   ProjectOperator project_oper;
-  project_oper.add_child(&pred_oper);
   for (const Field &field : select_stmt->query_fields()) {
-    project_oper.add_projection(field.table(), field.meta());
+    project_oper.add_projection(field.table(), field.meta(), field.aggr_type());
   }
+  if (select_stmt->aggr_fields().empty()) {
+    project_oper.add_child(&pred_oper);
+  } else {
+    aggr_oper.add_child(&pred_oper);
+    project_oper.add_child(&aggr_oper);
+  }
+
   rc = project_oper.open();
   if (rc != RC::SUCCESS) {
     LOG_WARN("failed to open operator");

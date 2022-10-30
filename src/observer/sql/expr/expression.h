@@ -38,7 +38,8 @@ public:
 class FieldExpr : public Expression {
 public:
   FieldExpr() = default;
-  FieldExpr(const Table *table, const FieldMeta *field) : field_(table, field)
+  FieldExpr(const Table *table, const FieldMeta *field, AggrType aggr_type = AGGR_NONE)
+      : field_(table, field, aggr_type)
   {}
 
   virtual ~FieldExpr() = default;

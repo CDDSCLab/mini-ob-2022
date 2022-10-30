@@ -14,48 +14,73 @@ See the Mulan PSL v2 for more details. */
 
 #pragma once
 
+#include <cstring>
+
 #include "storage/common/table.h"
 #include "storage/common/field_meta.h"
 
 class Field {
 public:
-  Field() = default;
-  Field(const Table *table, const FieldMeta *field) : table_(table), field_(field)
+  Field() : aggr_type_(AGGR_NONE){};
+  Field(const Table *table, const FieldMeta *field) : table_(table), field_(field), aggr_type_(AGGR_NONE)
+  {}
+  Field(const Table *table, const FieldMeta *field, AggrType aggr_type)
+      : table_(table), field_(field), aggr_type_(aggr_type)
   {}
 
   const Table *table() const
   {
     return table_;
   }
-  const FieldMeta *meta() const
-  {
-    return field_;
-  }
-
-  AttrType attr_type() const
-  {
-    return field_->type();
-  }
-
   const char *table_name() const
   {
     return table_->name();
+  }
+  void set_table(const Table *table)
+  {
+    this->table_ = table;
+  }
+
+  const FieldMeta *meta() const
+  {
+    return field_;
   }
   const char *field_name() const
   {
     return field_->name();
   }
-
-  void set_table(const Table *table)
+  AttrType attr_type() const
   {
-    this->table_ = table;
+    return field_->type();
+  }
+  AggrType aggr_type() const
+  {
+    return aggr_type_;
   }
   void set_field(const FieldMeta *field)
   {
     this->field_ = field;
   }
 
+  const char *alias() const
+  {
+    return alias_;
+  }
+  void set_alias(const char *alias)
+  {
+    this->alias_ = alias;
+  }
+
+  bool equal(const Field &other) const
+  {
+    // TODO(yueyang): check alias
+    return strcmp(table_name(), other.table_name()) == 0 && strcmp(field_name(), other.field_name()) == 0 &&
+           aggr_type_ == other.aggr_type_;
+  }
+
 private:
   const Table *table_ = nullptr;
   const FieldMeta *field_ = nullptr;
+  const AggrType aggr_type_;
+  const char *alias_ = nullptr;
 };

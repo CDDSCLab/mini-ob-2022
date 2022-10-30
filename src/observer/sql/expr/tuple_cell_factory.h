@@ -54,6 +54,9 @@ public:
         return GetFloatTupleCell(FLT_MAX);
       case DATES:
         return GetDateTupleCell(INT32_MAX);
+      case TEXTS: {
+        // TODO(yueyang)
+      }
     }
     assert(false);
   }
@@ -71,6 +74,9 @@ public:
         return GetFloatTupleCell(FLT_MIN);
       case DATES:
         return GetDateTupleCell(INT32_MIN);
+      case TEXTS: {
+        // TODO(yueyang)
+      }
     }
     assert(false);
   }

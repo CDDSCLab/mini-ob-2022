@@ -112,6 +112,7 @@ void TupleCell::plus(const TupleCell &other)
       } break;
       case UNDEFINED:
       case CHARS:
+      case TEXTS:
       case DATES:
         break;
     }
