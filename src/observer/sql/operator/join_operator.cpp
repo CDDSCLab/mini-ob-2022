@@ -121,6 +121,7 @@ bool JoinOperator::do_predicate(RowTuple &tuple)
 bool JoinOperator::do_join(Tuple *left, Tuple *right)
 {
   joined_tuple_.set_tuple(left, right, left_is_row_);
+  return true;
 }
 
 Tuple *JoinOperator::current_tuple()
