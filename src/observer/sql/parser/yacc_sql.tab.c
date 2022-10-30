@@ -1796,7 +1796,7 @@ yyreduce:
 #line 463 "yacc_sql.y"
                 {
         RelAttr *attr = (RelAttr *)(malloc(sizeof(RelAttr)));
-        relation_attr_init(attr, NULL, (yyvsp[-2].string));
+        relation_attr_init(attr, (yyvsp[-2].string), (yyvsp[0].string));
         (yyval._attr) = attr;
     }
 #line 1803 "yacc_sql.tab.c"

@@ -123,6 +123,14 @@ void TupleCell::plus(const TupleCell &other)
     } else if (this->attr_type_ == INTS && other.attr_type_ == FLOATS) {
       float result = *(int *)data_ + *(float *)other.data_;
       memcpy(data_, &result, sizeof(result));
+    } else if (this->attr_type_ == FLOATS && other.attr_type_ == CHARS) {
+      float result = *(float *)data_ + atof((char *)other.data_);
+      memcpy(data_, &result, sizeof(result));
+    } else if (this->attr_type_ == INTS && other.attr_type_ == CHARS) {
+      int result = *(int *)data_ + atoi((char *)other.data_);
+      memcpy(data_, &result, sizeof(result));
+    } else {
+      assert(false);
     }
     // TODO(yueyang): implement
   }

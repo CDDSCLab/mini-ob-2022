@@ -28,6 +28,12 @@ public:
       : table_(table), field_(field), aggr_type_(aggr_type)
   {}
 
+  bool operator==(const Field &other) const
+  {
+    return strcmp(table_name(), other.table_name()) == 0 && strcmp(field_name(), other.field_name()) == 0 &&
+           aggr_type_ == other.aggr_type_;
+  }
+
   const Table *table() const
   {
     return table_;

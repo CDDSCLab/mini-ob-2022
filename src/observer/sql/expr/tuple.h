@@ -213,7 +213,7 @@ public:
     for (size_t i = 0; i < speces_.size(); ++i) {
       const auto field_expr = (const FieldExpr *)speces_[i]->expression();
       const Field &f = field_expr->field();
-      if (field.equal(f)) {
+      if (field == f) {
         return cell_at(i, cell);
       }
     }

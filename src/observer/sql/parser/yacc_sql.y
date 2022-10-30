@@ -462,7 +462,7 @@ attr:
     }
     | ID DOT ID {
         RelAttr *attr = (RelAttr *)(malloc(sizeof(RelAttr)));
-        relation_attr_init(attr, NULL, $1);
+        relation_attr_init(attr, $1, $3);
         $$ = attr;
     };
 aggr_attr:

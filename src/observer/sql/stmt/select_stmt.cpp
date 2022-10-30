@@ -13,6 +13,9 @@ See the Mulan PSL v2 for more details. */
 //
 
 #include "sql/stmt/select_stmt.h"
+
+#include <algorithm>
+
 #include "sql/stmt/filter_stmt.h"
 #include "common/log/log.h"
 #include "common/lang/string.h"
@@ -64,13 +67,12 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
   }
 
   // Check aggregation type.
-  std::vector<Field> aggr_fields;
   for (size_t i = select_sql.attr_num - 1;; i--) {
     const RelAttr &relation_attr = select_sql.attributes[i];
-    if (0 == strcmp(relation_attr.attribute_name, "*") && relation_attr.aggr_type != AGGR_NONE &&
-        relation_attr.aggr_type != AGGR_COUNT) {
+    auto aggr_type = relation_attr.aggr_type;
+    if (0 == strcmp(relation_attr.attribute_name, "*") && aggr_type != AGGR_NONE && aggr_type != AGGR_COUNT) {
       return RC::GENERIC_ERROR;
-    } else if (0 == strcmp(relation_attr.attribute_name, "1") && relation_attr.aggr_type != AGGR_COUNT) {
+    } else if (0 == strcmp(relation_attr.attribute_name, "1") && aggr_type != AGGR_COUNT) {
       return RC::GENERIC_ERROR;
     }
     if (i == 0) {
@@ -79,6 +81,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
   }
 
   // collect query fields in `select` statement
+  std::vector<Field> aggr_fields;
   std::vector<Field> query_fields;
   for (size_t i = select_sql.attr_num - 1;; i--) {
     const RelAttr &relation_attr = select_sql.attributes[i];
@@ -163,6 +166,22 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
     }
     if (i == 0) {
       break;
+    }
+  }
+
+  // collect group by field in `select` statement
+  std::vector<Field> group_by_fields;
+  for (size_t i = select_sql.attr_num - 1;; i--) {
+
+    if (i == 0) {
+      break;
+    }
+  }
+
+  for (const auto &field : query_fields) {
+    if (!aggr_fields.empty() && std::count(aggr_fields.begin(), aggr_fields.end(), field) == 0) {
+      // Error mixing aggregated columns with normal columns.
+      return RC::GENERIC_ERROR;
     }
   }
 

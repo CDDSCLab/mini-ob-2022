@@ -81,7 +81,7 @@ public:
         case AGGR_SUM:
           if (attr_type == INTS) {
             values.emplace_back(TupleCellFactory::GetIntegerTupleCell(0));
-          } else if (attr_type == FLOATS) {
+          } else if (attr_type == FLOATS || attr_type == CHARS) {
             values.emplace_back(TupleCellFactory::GetFloatTupleCell(0));
           } else {
             assert(false);

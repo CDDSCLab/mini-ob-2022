@@ -39,7 +39,7 @@ ParseStage::~ParseStage()
 //! Parse properties, instantiate a stage object
 Stage *ParseStage::make_stage(const std::string &tag)
 {
-  ParseStage *stage = new (std::nothrow) ParseStage(tag.c_str());
+  auto stage = new (std::nothrow) ParseStage(tag.c_str());
   if (stage == nullptr) {
     LOG_ERROR("new ParseStage failed");
     return nullptr;
@@ -93,7 +93,7 @@ void ParseStage::handle_event(StageEvent *event)
     return;
   }
 
-  CompletionCallback *cb = new (std::nothrow) CompletionCallback(this, nullptr);
+  auto cb = new (std::nothrow) CompletionCallback(this, nullptr);
   if (cb == nullptr) {
     LOG_ERROR("Failed to new callback for SQLStageEvent");
     callback_event(event, nullptr);
@@ -105,22 +105,20 @@ void ParseStage::handle_event(StageEvent *event)
   event->done_immediate();
 
   LOG_TRACE("Exit\n");
-  return;
 }
 
 void ParseStage::callback_event(StageEvent *event, CallbackContext *context)
 {
   LOG_TRACE("Enter\n");
-  SQLStageEvent *sql_event = static_cast<SQLStageEvent *>(event);
+  auto sql_event = dynamic_cast<SQLStageEvent *>(event);
   sql_event->session_event()->done_immediate();
   sql_event->done_immediate();
   LOG_TRACE("Exit\n");
-  return;
 }
 
 RC ParseStage::handle_request(StageEvent *event)
 {
-  SQLStageEvent *sql_event = static_cast<SQLStageEvent *>(event);
+  auto sql_event = dynamic_cast<SQLStageEvent *>(event);
   const std::string &sql = sql_event->sql();
 
   Query *query_result = query_create();
@@ -132,7 +130,9 @@ RC ParseStage::handle_request(StageEvent *event)
   RC ret = parse(sql.c_str(), query_result);
   if (ret != RC::SUCCESS) {
     // set error information to event
-    sql_event->session_event()->set_response("Failed to parse sql\n");
+    //    sql_event->session_event()->set_response("Failed to parse sql\n");
+    sql_event->session_event()->set_response("FAILURE\n");
+    LOG_ERROR("Failed to parse sql.");
     query_destroy(query_result);
     return RC::INTERNAL;
   }
