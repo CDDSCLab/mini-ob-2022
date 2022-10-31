@@ -531,7 +531,7 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
 
   std::stringstream ss;
   print_tuple_header(ss, project_oper);
-  std::vector<Tuple *> result_tuples;
+  std::vector<std::vector<TupleCell>> result_tuples;
   while ((rc = project_oper.next()) == RC::SUCCESS) {
     // get current record
     // write to response
@@ -545,12 +545,18 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
       tuple_to_string(ss, *tuple);
       ss << std::endl;
     } else {
-      result_tuples.emplace_back(tuple);
+      std::vector<TupleCell> result_tuple;
+      for (size_t i = 0; i < tuple->cell_num(); i++) {
+        TupleCell tmp;
+        tuple->cell_at(i, tmp);
+        result_tuple.emplace_back(tmp);
+      }
+      result_tuples.emplace_back(result_tuple);
     }
   }
 
   if (select_stmt->order_by_fields().size() != 0) {
-    // 排序，输出
+    do_order_by_print(result_tuples, select_stmt->order_by_fields(), select_stmt->order_by_types(), ss);
   }
 
   if (rc != RC::RECORD_EOF) {
@@ -561,6 +567,32 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   }
   session_event->set_response(ss.str());
   return rc;
+}
+
+void ExecuteStage::do_order_by_print(std::vector<std::vector<TupleCell>> result_tuples,
+    std::vector<Field> order_by_fields_, std::vector<OrderType> order_by_types_, std::ostream &ss)
+{
+  // do sort
+  std::vector<std::vector<TupleCell>> ordered_tuples;
+  for (size_t i = 0; i < order_by_fields_.size(); i++) {
+    auto order_by_field = order_by_fields_[i];
+    auto order_by_type = order_by_types_[i];
+  }
+
+  // do print
+  for (int i = 0; i < ordered_tuples.size(); i++) {
+    auto ordered_tuple = ordered_tuples[i];
+    bool first_field = true;
+    for (int i = 0; i < ordered_tuple.size(); i++) {
+      if (!first_field) {
+        ss << " | ";
+      } else {
+        first_field = false;
+      }
+      ordered_tuple[i].to_string(ss);
+    }
+    ss << std::endl;
+  }
 }
 
 RC ExecuteStage::do_help(SQLStageEvent *sql_event)

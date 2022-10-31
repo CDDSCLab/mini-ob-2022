@@ -17,6 +17,8 @@ See the Mulan PSL v2 for more details. */
 
 #include "common/seda/stage.h"
 #include "sql/parser/parse.h"
+#include "sql/expr/tuple_cell.h"
+#include "storage/common/field.h"
 #include "rc.h"
 
 class SQLStageEvent;
@@ -46,6 +48,8 @@ protected:
   RC do_show_tables(SQLStageEvent *sql_event);
   RC do_desc_table(SQLStageEvent *sql_event);
   RC do_select(SQLStageEvent *sql_event);
+  void do_order_by_print(std::vector<std::vector<TupleCell>> result_tuples, std::vector<Field> order_by_fields_,
+      std::vector<OrderType> order_by_types_, std::ostream &ss);
   RC do_insert(SQLStageEvent *sql_event);
   RC do_update(SQLStageEvent *sql_event);
   RC do_delete(SQLStageEvent *sql_event);
