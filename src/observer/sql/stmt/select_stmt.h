@@ -55,6 +55,14 @@ public:
   {
     return group_by_fields_;
   }
+  const std::vector<Field> &order_by_fields() const
+  {
+    return order_by_fields_;
+  }
+  const std::vector<OrderType> &order_by_types() const
+  {
+    return order_by_types_;
+  }
   FilterStmt *filter_stmt() const
   {
     return filter_stmt_;

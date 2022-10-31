@@ -197,7 +197,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
         LOG_WARN("cannot find the order by field");
         return RC::SCHEMA_FIELD_MISSING;
       }
-      query_fields.emplace_back(table, field_meta);
+      order_by_fields.emplace_back(table, field_meta);
     } else {  // 多表查询order by
       bool exist = false;
       for (size_t i = 0; i < tables.size(); i++) {
@@ -207,7 +207,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
             LOG_WARN("cannot find the order by field");
             return RC::SCHEMA_FIELD_MISSING;
           }
-          query_fields.emplace_back(tables[i], field_meta);
+          order_by_fields.emplace_back(tables[i], field_meta);
           exist = true;
           break;
         }

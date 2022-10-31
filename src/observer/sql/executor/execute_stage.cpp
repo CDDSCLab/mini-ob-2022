@@ -531,6 +531,7 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
 
   std::stringstream ss;
   print_tuple_header(ss, project_oper);
+  std::vector<Tuple *> result_tuples;
   while ((rc = project_oper.next()) == RC::SUCCESS) {
     // get current record
     // write to response
@@ -540,9 +541,16 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
       LOG_WARN("failed to get current record. rc=%s", strrc(rc));
       break;
     }
+    if (select_stmt->order_by_fields().size() == 0) {
+      tuple_to_string(ss, *tuple);
+      ss << std::endl;
+    } else {
+      result_tuples.emplace_back(tuple);
+    }
+  }
 
-    tuple_to_string(ss, *tuple);
-    ss << std::endl;
+  if (select_stmt->order_by_fields().size() != 0) {
+    // 排序，输出
   }
 
   if (rc != RC::RECORD_EOF) {
