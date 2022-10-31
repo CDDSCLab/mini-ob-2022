@@ -85,7 +85,9 @@ QUOTE            [\'\"]
 [Aa][Vv][Gg]                                         RETURN_TOKEN(AVG);
 [Ss][Uu][Mm]                                         RETURN_TOKEN(SUM);
 [Gg][Rr][Oo][Uu][Pp]                                 RETURN_TOKEN(GROUP);
+[Oo][Rr][Dd][Ee][Rr]                                 RETURN_TOKEN(ORDER);
 [Bb][Yy]                                             RETURN_TOKEN(BY);
+[Aa][Ss][Cc]                                         RETURN_TOKEN(ASC);
 [Hh][Aa][Vv][Ii][Nn][Gg]                             RETURN_TOKEN(HAVING);
 [Nn][Uu][Ll][Ll]                                     RETURN_TOKEN(NULL_TOKEN);
 [Nn][Uu][Ll][Ll][Aa][Bb][Ll][Ee]                     RETURN_TOKEN(NULLABLE);

@@ -70,6 +70,14 @@ typedef struct _Condition {
   Value right_value;   // right-hand side value if right_is_attr = FALSE
 } Condition;
 
+typedef enum { ORDER_ASC = 0, ORDER_DESC } OrderType;
+
+// struct of order
+typedef struct _Order {
+  RelAttr attr;
+  OrderType order_type;
+} Order;
+
 // struct of select
 typedef struct _Selects {
   size_t attr_num;                    // Length of attrs in Select clause
@@ -82,6 +90,8 @@ typedef struct _Selects {
   RelAttr group_attributes[MAX_NUM];  // attrs in group by clause
   size_t having_num;                  // Length of conditions in Where clause
   Condition having[MAX_NUM];          // conditions in Having clause
+  Order order[MAX_NUM];               // fields used by order by
+  size_t order_num;                   // num of order by
 } Selects;
 
 typedef struct {
@@ -234,6 +244,7 @@ void selects_append_relation(Selects *selects, const char *relation_name);
 void selects_append_conditions(Selects *selects, Condition conditions[], size_t condition_num);
 void selects_append_groups(Selects *selects, RelAttr *rel_attr);
 void selects_append_having(Selects *selects, Condition *condition);
+void selects_append_order(Selects *selects, char *attribute_name, OrderType type, char *relation_name);
 void selects_destroy(Selects *selects);
 
 // void inserts_init(Inserts *inserts, const char *relation_name, Value values[], size_t value_num, size_t group_num);

@@ -156,6 +156,16 @@ void selects_append_having(Selects *selects, Condition *condition)
   selects->having[selects->having_num++] = *condition;
 }
 
+void selects_append_order(Selects *selects, char *attribute_name, OrderType type, char *relation_name)
+{
+  RelAttr tmp;
+  tmp.relation_name = relation_name;
+  tmp.attribute_name = attribute_name;
+  selects->order[selects->order_num].order_type = type;
+  selects->order[selects->order_num].attr = tmp;
+  selects->order_num++;
+}
+
 void selects_destroy(Selects *selects)
 {
   for (size_t i = 0; i < selects->attr_num; i++) {
@@ -173,6 +183,14 @@ void selects_destroy(Selects *selects)
     condition_destroy(&selects->conditions[i]);
   }
   selects->condition_num = 0;
+
+  for (size_t i = 0; i < selects->order_num; i++) {
+    // free(selects->order[i].attr.relation_name);
+    // free(selects->order[i].attr.attribute_name);
+    // selects->order[i].attr.relation_name = NULL;
+    // selects->order[i].attr.attribute_name = NULL;
+  }
+  selects->order_num = 0;
 }
 
 void inserts_init(Inserts *inserts, const char *relation_name, Value values[], size_t groups[], size_t group_num)

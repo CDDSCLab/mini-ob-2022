@@ -132,6 +132,8 @@ ParserContext *get_context(yyscan_t scanner)
         NOT
         NULL_TOKEN
         NULLABLE
+        ORDER
+        ASC
 
 %union {
   struct _RelAttr *_attr;
@@ -690,6 +692,37 @@ having_list:
         free($2);
         selects_append_having(&CONTEXT->selects[CONTEXT->select_length], &condition);
     };
+
+orderby:
+    // empty
+    | ORDER BY order order_list {
+    }
+    ;
+order_list:
+    // empty
+    | COMMA order order_list{
+    }
+    ;
+order:
+    ID{
+        selects_append_order(&CONTEXT->selects[CONTEXT->select_length], $1, 0, "");
+    }
+    | ID DESC{
+        selects_append_order(&CONTEXT->selects[CONTEXT->select_length], $1, 1, "");
+    }
+    | ID ASC{
+        selects_append_order(&CONTEXT->selects[CONTEXT->select_length], $1, 0, "");
+    }
+    | ID DOT ID{
+        selects_append_order(&CONTEXT->selects[CONTEXT->select_length], $3, 0, $1);
+    }
+    | ID DOT ID DESC{
+        selects_append_order(&CONTEXT->selects[CONTEXT->select_length], $3, 1, $1);
+    }
+    | ID DOT ID ASC{
+        selects_append_order(&CONTEXT->selects[CONTEXT->select_length], $3, 0, $1);
+    }
+    ;
 
 load_data:
     LOAD DATA INFILE SSS INTO TABLE ID SEMICOLON {
