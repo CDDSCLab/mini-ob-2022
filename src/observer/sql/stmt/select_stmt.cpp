@@ -181,6 +181,44 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
     }
   }
 
+  std::vector<Field> order_by_fields;
+  std::vector<OrderType> order_by_types;
+  for (size_t i = 0; i < select_sql.order_num; i++) {
+    order_by_types.emplace_back(select_sql.order[i].order_type);
+    const RelAttr &order_attr = select_sql.order[i].attr;
+    if (common::is_blank(order_attr.relation_name)) {  // 单表查询order by
+      if (tables.size() != 1) {
+        LOG_WARN("in muti selects no exist relation name");
+        return RC::SCHEMA_FIELD_MISSING;
+      }
+      const auto table = tables[0];
+      const auto field_meta = table->table_meta().field(order_attr.attribute_name);
+      if (field_meta == nullptr) {
+        LOG_WARN("cannot find the order by field");
+        return RC::SCHEMA_FIELD_MISSING;
+      }
+      query_fields.emplace_back(table, field_meta);
+    } else {  // 多表查询order by
+      bool exist = false;
+      for (size_t i = 0; i < tables.size(); i++) {
+        if (std::string(tables[i]->name()) == std::string(order_attr.relation_name)) {
+          const auto field_meta = tables[i]->table_meta().field(order_attr.attribute_name);
+          if (field_meta == nullptr) {
+            LOG_WARN("cannot find the order by field");
+            return RC::SCHEMA_FIELD_MISSING;
+          }
+          query_fields.emplace_back(tables[i], field_meta);
+          exist = true;
+          break;
+        }
+      }
+      if (!exist) {
+        LOG_WARN("cannot find the order by relation name");
+        return RC::SCHEMA_FIELD_MISSING;
+      }
+    }
+  }
+
   for (const auto &field : query_fields) {
     if (!aggr_fields.empty() && std::count(aggr_fields.begin(), aggr_fields.end(), field) == 0) {
       // Error mixing aggregated columns with normal columns.
@@ -209,6 +247,8 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
   select_stmt->tables_.swap(tables);
   select_stmt->query_fields_.swap(query_fields);
   select_stmt->aggr_fields_.swap(aggr_fields);
+  select_stmt->order_by_fields_.swap(order_by_fields);
+  select_stmt->order_by_types_.swap(order_by_types);
   select_stmt->filter_stmt_ = filter_stmt;
   stmt = select_stmt;
   return RC::SUCCESS;

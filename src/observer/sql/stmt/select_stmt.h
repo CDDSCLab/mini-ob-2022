@@ -65,5 +65,7 @@ private:
   std::vector<Field> aggr_fields_;
   std::vector<Field> group_by_fields_;
   std::vector<Table *> tables_;
+  std::vector<Field> order_by_fields_;
+  std::vector<OrderType> order_by_types_;
   FilterStmt *filter_stmt_ = nullptr;
 };
