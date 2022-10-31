@@ -556,7 +556,7 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   }
 
   if (select_stmt->order_by_fields().size() != 0) {
-    do_order_by_print(result_tuples, select_stmt->order_by_fields(), select_stmt->order_by_types(), ss);
+    do_order_by_print(result_tuples, select_stmt->order_by_fields(), select_stmt->order_by_types(), ss, select_stmt);
   }
 
   if (rc != RC::RECORD_EOF) {
@@ -570,29 +570,69 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
 }
 
 void ExecuteStage::do_order_by_print(std::vector<std::vector<TupleCell>> result_tuples,
-    std::vector<Field> order_by_fields_, std::vector<OrderType> order_by_types_, std::ostream &ss)
+    std::vector<Field> order_by_fields, std::vector<OrderType> order_by_types, std::ostream &ss, SelectStmt *select)
 {
-  // do sort
-  std::vector<std::vector<TupleCell>> ordered_tuples;
-  for (size_t i = 0; i < order_by_fields_.size(); i++) {
-    auto order_by_field = order_by_fields_[i];
-    auto order_by_type = order_by_types_[i];
+  // do sort based on Bubbling
+  for (size_t i = 0; i < result_tuples.size() - 1; i++) {
+    for (size_t j = 0; j < result_tuples.size() - i - 1; j++) {
+      if (compare_tuple(result_tuples[j], result_tuples[j + 1], order_by_fields, order_by_types, select) == 1) {
+        auto tmp = result_tuples[j];
+        result_tuples[j] = result_tuples[j + 1];
+        result_tuples[j + 1] = tmp;
+      }
+    }
   }
 
   // do print
-  for (int i = 0; i < ordered_tuples.size(); i++) {
-    auto ordered_tuple = ordered_tuples[i];
+  for (int i = 0; i < result_tuples.size(); i++) {
+    auto result_tuple = result_tuples[i];
     bool first_field = true;
-    for (int i = 0; i < ordered_tuple.size(); i++) {
+    for (int i = 0; i < result_tuple.size(); i++) {
       if (!first_field) {
         ss << " | ";
       } else {
         first_field = false;
       }
-      ordered_tuple[i].to_string(ss);
+      result_tuple[i].to_string(ss);
     }
     ss << std::endl;
   }
+}
+
+int ExecuteStage::compare_tuple(std::vector<TupleCell> a, std::vector<TupleCell> b, std::vector<Field> order_by_fields,
+    std::vector<OrderType> order_by_types, SelectStmt *select)
+{
+  int ret = 0;
+  for (size_t i = 0; i < order_by_types.size(); i++) {
+    ret = compare_tuple_on_one_field(a, b, order_by_fields[i], order_by_types[i], select);
+    if (ret != 0) {
+      break;
+    }
+  }
+  return ret;
+}
+
+int ExecuteStage::compare_tuple_on_one_field(std::vector<TupleCell> a, std::vector<TupleCell> b, Field order_by_field,
+    OrderType order_by_type, SelectStmt *select)
+{
+  auto query_fields = select->query_fields();
+  int index = 0;
+  for (size_t i = 0; i < query_fields.size(); i++) {
+    if (query_fields[i] == order_by_field) {
+      index = i;
+      break;
+    }
+  }
+
+  auto tca = a[index];
+  auto tcb = b[index];
+
+  int ret = tca.compare(tcb);
+
+  if (order_by_type == ORDER_DESC) {
+    ret = -ret;
+  }
+  return ret;
 }
 
 RC ExecuteStage::do_help(SQLStageEvent *sql_event)

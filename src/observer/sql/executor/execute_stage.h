@@ -48,8 +48,12 @@ protected:
   RC do_show_tables(SQLStageEvent *sql_event);
   RC do_desc_table(SQLStageEvent *sql_event);
   RC do_select(SQLStageEvent *sql_event);
-  void do_order_by_print(std::vector<std::vector<TupleCell>> result_tuples, std::vector<Field> order_by_fields_,
-      std::vector<OrderType> order_by_types_, std::ostream &ss);
+  void do_order_by_print(std::vector<std::vector<TupleCell>> result_tuples, std::vector<Field> order_by_fields,
+      std::vector<OrderType> order_by_types, std::ostream &ss, SelectStmt *select);
+  int compare_tuple(std::vector<TupleCell> a, std::vector<TupleCell> b, std::vector<Field> order_by_fields,
+      std::vector<OrderType> order_by_types, SelectStmt *select);
+  int compare_tuple_on_one_field(std::vector<TupleCell> a, std::vector<TupleCell> b, Field order_by_field,
+      OrderType order_by_type, SelectStmt *select);
   RC do_insert(SQLStageEvent *sql_event);
   RC do_update(SQLStageEvent *sql_event);
   RC do_delete(SQLStageEvent *sql_event);
