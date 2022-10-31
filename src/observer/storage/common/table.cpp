@@ -301,9 +301,10 @@ RC Table::insert_record(Trx *trx, Record *record)
     }
   }
 
-  rc = insert_entry_of_indexes(record->data(), record->rid());
+  auto tmp = insert_entry_of_indexes(record->data(), record->rid());
+  rc = tmp.first;
   if (rc != RC::SUCCESS) {
-    RC rc2 = delete_entry_of_indexes(record->data(), record->rid(), true);
+    RC rc2 = delete_entry_of_indexes(record->data(), record->rid(), true, tmp.second);
     if (rc2 != RC::SUCCESS) {
       LOG_ERROR("Failed to rollback index data when insert index entries failed. table name=%s, rc=%d:%s",
           name(),
@@ -871,7 +872,7 @@ RC Table::update_record(
   }
 
   // insert into index.
-  rc = insert_entry_of_indexes(record->data(), record->rid());
+  rc = insert_entry_of_indexes(record->data(), record->rid()).first;
   if (rc != RC::SUCCESS) {
     LOG_ERROR("Failed to insert indexes of record (rid=%d.%d). rc=%d:%s",
         record->rid().page_num,
@@ -1014,22 +1015,26 @@ RC Table::rollback_delete(Trx *trx, const RID &rid)
   return trx->rollback_delete(this, record);  // update record in place
 }
 
-RC Table::insert_entry_of_indexes(const char *record, const RID &rid)
+std::pair<RC, Index *> Table::insert_entry_of_indexes(const char *record, const RID &rid)
 {
   RC rc = RC::SUCCESS;
   for (Index *index : indexes_) {
     rc = index->insert_entry(record, &rid);
     if (rc != RC::SUCCESS) {
-      break;
+      return std::pair<RC, Index *>(rc, index);
     }
   }
-  return rc;
+  return std::pair<RC, Index *>(rc, nullptr);
 }
 
-RC Table::delete_entry_of_indexes(const char *record, const RID &rid, bool error_on_not_exists)
+RC Table::delete_entry_of_indexes(const char *record, const RID &rid, bool error_on_not_exists, Index *fail_index)
 {
   RC rc = RC::SUCCESS;
   for (Index *index : indexes_) {
+    if (index == fail_index && index->index_meta().queryIsUnique() == 1) {
+      return RC::SUCCESS;
+    }
+
     rc = index->delete_entry(record, &rid);
     if (rc != RC::SUCCESS) {
       if (rc != RC::RECORD_INVALID_KEY || !error_on_not_exists) {
