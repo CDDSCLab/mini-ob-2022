@@ -19,10 +19,12 @@ See the Mulan PSL v2 for more details. */
 #include "rc.h"
 #include "sql/stmt/stmt.h"
 #include "sql/parser/parse_defs.h"
+#include "sql/executor/execute_stage.h"
 #include "storage/common/field_meta.h"
 
 class Table;
 class FilterStmt;
+class SelectStmt;
 
 class UpdateStmt : public Stmt {
 public:
@@ -45,6 +47,14 @@ public:
   {
     return values_;
   }
+  std::vector<Value> &get_values()
+  {
+    return values_;
+  }
+  const std::vector<SelectStmt *> &select_stmt() const
+  {
+    return select_stmt_;
+  }
   FilterStmt *filter_stmt() const
   {
     return filter_stmt_;
@@ -59,5 +69,6 @@ private:
   Table *table_ = nullptr;
   std::vector<const FieldMeta *> update_fields_;
   std::vector<Value> values_;
+  std::vector<SelectStmt *> select_stmt_;
   FilterStmt *filter_stmt_ = nullptr;
 };

@@ -18,6 +18,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/filter_stmt.h"
 #include "storage/common/db.h"
 #include "storage/common/table.h"
+#include "select_stmt.h"
 
 UpdateStmt::~UpdateStmt()
 {
@@ -47,7 +48,8 @@ RC UpdateStmt::create(Db *db, const Updates &update_sql, Stmt *&stmt)
 
   std::vector<const FieldMeta *> update_fields;
   std::vector<Value> values;
-  for (int i = update_sql.attr_num - 1; i >= 0; i--) {
+  std::vector<SelectStmt *> selects;
+  for (size_t i = update_sql.attr_num - 1;; i--) {
     const FieldMeta *field_meta = table->table_meta().field(update_sql.attribute_name[i]);
     if (nullptr == field_meta) {
       LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), update_sql.attribute_name[i]);
@@ -55,8 +57,19 @@ RC UpdateStmt::create(Db *db, const Updates &update_sql, Stmt *&stmt)
     }
     update_fields.push_back(field_meta);
     values.push_back(update_sql.values[i]);
-  }
+    Stmt *select_stmt = nullptr;
+    if (update_sql.selects[i] != nullptr) {
+      RC rc = SelectStmt::create(db, *update_sql.selects[i], select_stmt);
+      if (rc != RC::SUCCESS) {
+        return rc;
+      }
+    }
+    selects.emplace_back(dynamic_cast<SelectStmt *>(select_stmt));
 
+    if (i == 0) {
+      break;
+    }
+  }
 
   // create filter statement in `where` statement
   FilterStmt *filter_stmt = nullptr;
@@ -71,6 +84,7 @@ RC UpdateStmt::create(Db *db, const Updates &update_sql, Stmt *&stmt)
   update_stmt->table_ = table;
   update_stmt->update_fields_.swap(update_fields);
   update_stmt->values_.swap(values);
+  update_stmt->select_stmt_.swap(selects);
   update_stmt->filter_stmt_ = filter_stmt;
   stmt = update_stmt;
   return rc;

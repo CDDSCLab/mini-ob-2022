@@ -57,14 +57,9 @@ public:
 private:
   Operator *left_ = nullptr;
   Operator *right_ = nullptr;
+  bool left_is_row_ = false;
   bool round_done_ = true;
 
   JoinTuple joined_tuple_;
   FilterStmt *filter_stmt_ = nullptr;
-  bool left_is_row_ = false;
-
-  std::vector<Tuple *> left_tuples_{};
-  std::vector<Tuple *> right_tuples_{};
-  uint32_t left_index_ = 0;
-  uint32_t right_index_ = 0;
 };

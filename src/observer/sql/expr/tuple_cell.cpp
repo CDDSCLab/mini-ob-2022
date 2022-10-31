@@ -59,6 +59,35 @@ void TupleCell::to_string(std::ostream &os) const
   }
 }
 
+Value TupleCell::to_value() const
+{
+  char *data = nullptr;
+  int length = sizeof(int);
+  switch (attr_type_) {
+    case INTS: {
+      length = sizeof(int);
+    } break;
+    case FLOATS: {
+      length = sizeof(float);
+    } break;
+    case CHARS: {
+      length = length_;
+    } break;
+    case DATES: {
+      length = sizeof(int);
+    } break;
+    case TEXTS: {
+      // TODO(yueyang): implement later.
+    }
+    default: {
+      LOG_WARN("unsupported attr type: %d", attr_type_);
+    } break;
+  }
+  data = new char[length];
+  memcpy(data, data_, length);
+  return {attr_type_, data};
+}
+
 int TupleCell::compare(const TupleCell &other) const
 {
   if (this->attr_type_ == other.attr_type_) {

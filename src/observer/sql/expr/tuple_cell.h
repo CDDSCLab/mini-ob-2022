@@ -46,6 +46,8 @@ public:
 
   void to_string(std::ostream &os) const;
 
+  Value to_value() const;
+
   int compare(const TupleCell &other) const;
 
   void plus(const TupleCell &other);
