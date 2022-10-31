@@ -67,7 +67,7 @@ typedef struct _Condition {
 } Condition;
 
 // struct of select
-typedef struct {
+typedef struct _Selects {
   size_t attr_num;                    // Length of attrs in Select clause
   RelAttr attributes[MAX_NUM];        // attrs in Select clause
   size_t relation_num;                // Length of relations in From clause
@@ -107,6 +107,7 @@ typedef struct {
   size_t attr_num;                // attributes in Set clause
   char *attribute_name[MAX_NUM];  // Attribute to update
   Value values[MAX_NUM];          // update value
+  Selects *selects[MAX_NUM];      // update select
   size_t condition_num;           // Length of conditions in Where clause
   Condition conditions[MAX_NUM];  // conditions in Where clause
 } Updates;
@@ -239,6 +240,7 @@ void deletes_destroy(Deletes *deletes);
 
 void updates_init(Updates *updates, const char *relation_name, Condition conditions[], size_t condition_num);
 void updates_append_attr(Updates *updates, const char *relation_name, Value *value);
+void updates_append_select(Updates *updates, const char *relation_name, Selects *selects);
 void updates_destroy(Updates *updates);
 
 void create_table_append_attribute(CreateTable *create_table, AttrInfo *attr_info);

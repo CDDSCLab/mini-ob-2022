@@ -125,17 +125,18 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 134 "yacc_sql.y"
+#line 133 "yacc_sql.y"
 
   struct _RelAttr *_attr;
   struct _Condition *_condition;
   struct _Value *_value;
+  struct _Selects *_select;
   char *string;
   int number;
   float floats;
   char *position;
 
-#line 139 "yacc_sql.tab.h"
+#line 140 "yacc_sql.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

@@ -248,7 +248,14 @@ void updates_init(Updates *updates, const char *relation_name, Condition conditi
 void updates_append_attr(Updates *updates, const char *relation_name, Value *value)
 {
   updates->attribute_name[updates->attr_num] = strdup(relation_name);
-  updates->values[updates->attr_num++] = *value;
+  updates->values[updates->attr_num] = *value;
+  updates->selects[updates->attr_num++] = nullptr;
+}
+
+void updates_append_select(Updates *updates, const char *relation_name, Selects *selects)
+{
+  updates->attribute_name[updates->attr_num] = strdup(relation_name);
+  updates->selects[updates->attr_num++] = selects;
 }
 
 void updates_destroy(Updates *updates)

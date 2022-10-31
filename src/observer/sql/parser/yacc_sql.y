@@ -13,8 +13,8 @@
 typedef struct ParserContext {
   Query * ssql;
   size_t select_length;
+  Selects selects[MAX_NUM];
   size_t condition_length;
-  size_t from_length;
   size_t value_length;
   Value values[MAX_NUM];
   Condition conditions[MAX_NUM];
@@ -47,11 +47,10 @@ void yyerror(yyscan_t scanner, const char *str)
   query_reset(context->ssql);
   context->ssql->flag = SCF_ERROR;
   context->condition_length = 0;
-  context->from_length = 0;
-  context->select_length = 0;
   context->value_length = 0;
+  context->select_length = 0;
   context->ssql->sstr.insertion.value_num = 0;
-  
+
   // add by us
   context->group_num = 0;
   context->every_group_count=0;
@@ -109,7 +108,7 @@ ParserContext *get_context(yyscan_t scanner)
         HAVING
         HELP
         EXIT
-        DOT //QUOTE
+        DOT // QUOTE
         INTO
         VALUES
         FROM
@@ -127,14 +126,15 @@ ParserContext *get_context(yyscan_t scanner)
         GE
         NE
         LIKE
-		INNER
-		JOIN
-	NOT
+        INNER
+        JOIN
+        NOT
 
 %union {
   struct _RelAttr *_attr;
   struct _Condition *_condition;
   struct _Value *_value;
+  struct _Selects *_select;
   char *string;
   int number;
   float floats;
@@ -148,7 +148,7 @@ ParserContext *get_context(yyscan_t scanner)
 %token <string> SSS
 %token <string> STAR
 %token <string> STRING_V
-//非终结符
+// 非终结符
 
 %type <number> type;
 %type <number> aggr_type;
@@ -157,6 +157,8 @@ ParserContext *get_context(yyscan_t scanner)
 %type <_condition> condition;
 %type <_value> value;
 %type <number> number;
+
+%type <_select> select_unit;
 
 %%
 
@@ -402,67 +404,71 @@ delete:		/*  delete 语句的语法解析树*/
 		{
 			CONTEXT->ssql->flag = SCF_DELETE;//"delete";
 			deletes_init_relation(&CONTEXT->ssql->sstr.deletion, $3);
-			deletes_set_conditions(&CONTEXT->ssql->sstr.deletion, 
-					CONTEXT->conditions, CONTEXT->condition_length);
+			deletes_set_conditions(&CONTEXT->ssql->sstr.deletion, CONTEXT->conditions, CONTEXT->condition_length);
 			CONTEXT->condition_length = 0;	
     }
     ;
 
 update:			/*  update 语句的语法解析树*/
     UPDATE ID SET update_attr where SEMICOLON {
-		CONTEXT->ssql->flag = SCF_UPDATE;//"update";
+		CONTEXT->ssql->flag = SCF_UPDATE;
 		updates_init(&CONTEXT->ssql->sstr.update, $2, CONTEXT->conditions, CONTEXT->condition_length);
 		CONTEXT->condition_length = 0;
     };
 update_attr:
     ID EQ value update_attr_list {
 		updates_append_attr(&CONTEXT->ssql->sstr.update, $1, $3);
+    }
+    | ID EQ LBRACE select_unit RBRACE update_attr_list {
+        updates_append_select(&CONTEXT->ssql->sstr.update, $1, $4);
     };
 update_attr_list:
     /* empty */
     | COMMA ID EQ value update_attr_list {
-    		updates_append_attr(&CONTEXT->ssql->sstr.update, $2, $4);
+        updates_append_attr(&CONTEXT->ssql->sstr.update, $2, $4);
+    }
+    | COMMA ID EQ LBRACE select_unit RBRACE update_attr_list {
+        updates_append_select(&CONTEXT->ssql->sstr.update, $2, $5);
     };
 
 select:				/*  select 语句的语法解析树*/
-    SELECT select_attr FROM ID rel_list where group SEMICOLON {
-			// CONTEXT->ssql->sstr.selection.relations[CONTEXT->from_length++]=$4;
-			selects_append_relation(&CONTEXT->ssql->sstr.selection, $4);
+    select_unit SEMICOLON {
+        CONTEXT->ssql->flag = SCF_SELECT;
+        CONTEXT->ssql->sstr.selection = CONTEXT->selects[CONTEXT->select_length - 1];
+    };
+select_unit:
+    SELECT select_attr FROM ID rel_list where group {
+        selects_append_relation(&CONTEXT->selects[CONTEXT->select_length], $4);
+        selects_append_conditions(&CONTEXT->selects[CONTEXT->select_length], CONTEXT->conditions, CONTEXT->condition_length);
 
-			selects_append_conditions(&CONTEXT->ssql->sstr.selection, CONTEXT->conditions, CONTEXT->condition_length);
+        // 临时变量清零
+        CONTEXT->condition_length = 0;
+        CONTEXT->value_length = 0;
+        $$ = &CONTEXT->selects[CONTEXT->select_length++];
+    };
 
-			CONTEXT->ssql->flag=SCF_SELECT;//"select";
-			// CONTEXT->ssql->sstr.selection.attr_num = CONTEXT->select_length;
-
-			//临时变量清零
-			CONTEXT->condition_length=0;
-			CONTEXT->from_length=0;
-			CONTEXT->select_length=0;
-			CONTEXT->value_length = 0;
-	}
-	;
 select_attr:
     STAR select_attr_list {
         RelAttr attr;
         relation_attr_init(&attr, NULL, "*");
-        selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+        selects_append_attribute(&CONTEXT->selects[CONTEXT->select_length], &attr);
     }
     | attr select_attr_list {
-        selects_append_attribute(&CONTEXT->ssql->sstr.selection, $1);
+        selects_append_attribute(&CONTEXT->selects[CONTEXT->select_length], $1);
         free($1);
     }
     | aggr_attr select_attr_list {
-        selects_append_attribute(&CONTEXT->ssql->sstr.selection, $1);
+        selects_append_attribute(&CONTEXT->selects[CONTEXT->select_length], $1);
         free($1);
     };
 select_attr_list:
     /* empty */
     | COMMA attr select_attr_list {
-        selects_append_attribute(&CONTEXT->ssql->sstr.selection, $2);
+        selects_append_attribute(&CONTEXT->selects[CONTEXT->select_length], $2);
         free($2);
     }
     | COMMA aggr_attr select_attr_list {
-        selects_append_attribute(&CONTEXT->ssql->sstr.selection, $2);
+        selects_append_attribute(&CONTEXT->selects[CONTEXT->select_length], $2);
         free($2);
     };
 attr:
@@ -506,20 +512,20 @@ aggr_type:
 
 rel_list:
     /* empty */
-    | COMMA ID rel_list {	
-				selects_append_relation(&CONTEXT->ssql->sstr.selection, $2);
-		  }
-	| join {
-	};
+    | COMMA ID rel_list {
+            selects_append_relation(&CONTEXT->selects[CONTEXT->select_length], $2);
+    }
+    | join {
+    };
 
 join:
 	INNER JOIN ID ON condition condition_list join_list {
-		selects_append_relation(&CONTEXT->ssql->sstr.selection, $3);
+		selects_append_relation(&CONTEXT->selects[CONTEXT->select_length], $3);
 	};
 join_list:
 	/* empty */
 	| INNER JOIN ID  ON condition condition_list join_list {
-		selects_append_relation(&CONTEXT->ssql->sstr.selection, $3);
+		selects_append_relation(&CONTEXT->selects[CONTEXT->select_length], $3);
 	};
 
 where:
@@ -616,13 +622,13 @@ comOp:
 group:
     /* empty */
     | GROUP BY attr group_list having {
-        selects_append_groups(&CONTEXT->ssql->sstr.selection, $3);
+        selects_append_groups(&CONTEXT->selects[CONTEXT->select_length], $3);
         free($3);
     };
 group_list:
     /* empty */
     | COMMA attr group_list {
-        selects_append_groups(&CONTEXT->ssql->sstr.selection, $2);
+        selects_append_groups(&CONTEXT->selects[CONTEXT->select_length], $2);
         free($2);
     };
 having:
@@ -633,7 +639,7 @@ having:
         Condition condition;
         condition_init(&condition, CONTEXT->comp, 1, $2, NULL, 0, NULL, right_value);
         free($2);
-        selects_append_having(&CONTEXT->ssql->sstr.selection, &condition);
+        selects_append_having(&CONTEXT->selects[CONTEXT->select_length], &condition);
     };
 having_list:
     /* empty */
@@ -643,7 +649,7 @@ having_list:
         Condition condition;
         condition_init(&condition, CONTEXT->comp, 1, $2, NULL, 0, NULL, right_value);
         free($2);
-        selects_append_having(&CONTEXT->ssql->sstr.selection, &condition);
+        selects_append_having(&CONTEXT->selects[CONTEXT->select_length], &condition);
     };
 
 load_data:
