@@ -481,6 +481,7 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
 
     std::stringstream ss;
     my_print_tuple_header(ss, project_oper);
+    std::vector<std::vector<TupleCell>> result_tuples;
     while ((rc = project_oper.next()) == RC::SUCCESS) {
       // get current record
       // write to response
@@ -491,8 +492,22 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
         break;
       }
 
-      tuple_to_string(ss, *tuple);
-      ss << std::endl;
+      if (select_stmt->order_by_fields().size() == 0) {
+        tuple_to_string(ss, *tuple);
+        ss << std::endl;
+      } else {
+        std::vector<TupleCell> result_tuple;
+        for (size_t i = 0; i < tuple->cell_num(); i++) {
+          TupleCell tmp;
+          tuple->cell_at(i, tmp);
+          result_tuple.emplace_back(tmp);
+        }
+        result_tuples.emplace_back(result_tuple);
+      }
+    }
+
+    if (select_stmt->order_by_fields().size() != 0) {
+      do_order_by_print(result_tuples, select_stmt->order_by_fields(), select_stmt->order_by_types(), ss, select_stmt);
     }
 
     if (rc != RC::RECORD_EOF) {
@@ -575,7 +590,7 @@ void ExecuteStage::do_order_by_print(std::vector<std::vector<TupleCell>> result_
   // do sort based on Bubbling
   for (size_t i = 0; i < result_tuples.size() - 1; i++) {
     for (size_t j = 0; j < result_tuples.size() - i - 1; j++) {
-      if (compare_tuple(result_tuples[j], result_tuples[j + 1], order_by_fields, order_by_types, select) == 1) {
+      if (compare_tuple(result_tuples[j], result_tuples[j + 1], order_by_fields, order_by_types, select) > 0) {
         auto tmp = result_tuples[j];
         result_tuples[j] = result_tuples[j + 1];
         result_tuples[j + 1] = tmp;
