@@ -28,7 +28,7 @@ struct AggregateKey {
 
 struct AggregateValue {
   int count;
-  int null_count;  // 因为先实现了不额外 count，所以该 count 仅用于 avg 计算时使用
+  std::vector<int> null_counts;  // 因为先实现了不额外 count，所以该 count 仅用于 avg 计算时使用
   std::vector<TupleCell> aggregates_;
 };
 
@@ -61,8 +61,11 @@ public:
 
   AggregateValue generate_initial_aggregate_value()
   {
+    std::vector<int> null_counts;
     std::vector<TupleCell> values;
     for (const auto &field : aggr_field) {
+      null_counts.emplace_back(0);
+
       auto attr_type = field.attr_type();
       switch (field.aggr_type()) {
         case AGGR_NONE:
@@ -94,7 +97,7 @@ public:
     for (auto &value : values) {
       value.set_type(NULLS);
     }
-    return {0, 0, values};
+    return {0, null_counts, values};
   }
 
   void combine_aggregate_values(AggregateValue *result, const AggregateValue &input)
@@ -103,7 +106,7 @@ public:
     for (int i = 0; i < aggr_field.size(); i++) {
       if (input.aggregates_[i].attr_type() == AttrType::NULLS) {
 
-        result->null_count++;
+        result->null_counts[i]++;
 
         // 处理 count(null) 输出 0 和 count(date) 的特判
         if (aggr_field[i].aggr_type() == AGGR_COUNT) {
@@ -237,13 +240,16 @@ private:
 
   AggregateValue make_aggregate_value(const Tuple *tuple)
   {
+    std::vector<int> null_counts;
     std::vector<TupleCell> values;
     TupleCell cell;
     for (const auto &field : aggregate_field_) {
+      null_counts.emplace_back(0);
+
       tuple->find_cell(field, cell);
       values.emplace_back(cell);
     }
-    return {1, 0, values};
+    return {1, null_counts, values};
   }
 
   const std::vector<Field> &aggregate_field_;
