@@ -469,8 +469,8 @@ RC Table::make_record(int value_num, const Value *values, char *&record_out)
         copy_len = data_len + 1;
       }
     }
-    memcpy(record + field->offset(), value.data, copy_len - 1);
-    *((char *)(record + field->offset() + copy_len - 1)) = value.is_null;
+    memcpy(record + field->offset(), value.data, field->len() - 1);
+    *((char *)(record + field->offset() + field->len() - 1)) = value.is_null;
   }
 
   record_out = record;
