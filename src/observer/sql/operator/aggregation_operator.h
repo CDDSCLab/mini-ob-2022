@@ -89,6 +89,10 @@ public:
           break;
       }
     }
+
+    for (auto &value : values) {
+      value.set_type(NULLS);
+    }
     return {0, values};
   }
 
@@ -96,6 +100,14 @@ public:
   {
     result->count += input.count;
     for (int i = 0; i < aggr_field.size(); i++) {
+      if (input.aggregates_[i].attr_type() == NULLS) {
+        if (aggr_field[i].aggr_type() == AGGR_COUNT) {
+          result->aggregates_[i].set_type(aggr_field[i].attr_type());  // count null 结果为 0
+        }
+        continue;
+      }
+      result->aggregates_[i].set_type(aggr_field[i].attr_type());  // 取消掉 NULl
+
       switch (aggr_field[i].aggr_type()) {
         case AGGR_NONE:
           break;
