@@ -47,7 +47,7 @@ RC UpdateStmt::create(Db *db, const Updates &update_sql, Stmt *&stmt)
   table_map.insert(std::pair<std::string, Table *>(std::string(table_name), table));
 
   std::vector<const FieldMeta *> update_fields;
-  std::vector<Value> values;
+  std::vector<Value *> values;
   std::vector<SelectStmt *> selects;
   for (size_t i = update_sql.attr_num - 1;; i--) {
     const FieldMeta *field_meta = table->table_meta().field(update_sql.attribute_name[i]);
@@ -56,7 +56,7 @@ RC UpdateStmt::create(Db *db, const Updates &update_sql, Stmt *&stmt)
       return RC::SCHEMA_FIELD_MISSING;
     }
     update_fields.push_back(field_meta);
-    values.push_back(update_sql.values[i]);
+    values.emplace_back(const_cast<Value *>(&update_sql.values[i]));
     Stmt *select_stmt = nullptr;
     if (update_sql.selects[i] != nullptr) {
       RC rc = SelectStmt::create(db, *update_sql.selects[i], select_stmt);

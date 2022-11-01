@@ -470,22 +470,23 @@ RC Table::make_record(int value_num, const Value *values, char *&record_out)
   return RC::SUCCESS;
 }
 
-RC Table::update_record(Record *record, const std::vector<const FieldMeta *> &update_fields, const std::vector<Value> &values)
+RC Table::update_record(
+    Record *record, const std::vector<const FieldMeta *> &update_fields, const std::vector<Value *> &values)
 {
   RC rc = RC::SUCCESS;
   for (int i = 0; i < update_fields.size(); i++) {
     const FieldMeta *field = update_fields[i];
-    Value value = values[i];
+    auto value = const_cast<Value *>(values[i]);
     auto field_type = field->type();
-    auto value_type = value.type;
+    auto value_type = value->type;
     if (field_type != value_type) {
       if (field->type() == TEXTS && value_type == CHARS) {
         int id = *(int *)(record->data() + field->offset());
-        update_text(id, static_cast<char *>(value.data));
+        update_text(id, static_cast<char *>(value->data));
         continue;  // TEXT 的更新就到这儿了 （这样写不明显）
       }
 
-      rc = typecast(value_type, field_type, &value);
+      rc = typecast(value_type, field_type, value);
       if (rc == RC::SCHEMA_FIELD_TYPE_MISMATCH) {
         LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
             name(),
@@ -500,12 +501,12 @@ RC Table::update_record(Record *record, const std::vector<const FieldMeta *> &up
     }
     size_t copy_len = field->len();
     if (field->type() == CHARS) {
-      const size_t data_len = strlen((const char *)value.data);
+      const size_t data_len = strlen((const char *)value->data);
       if (copy_len > data_len) {
         copy_len = data_len + 1;
       }
     }
-    memcpy(record->data() + field->offset(), value.data, copy_len);
+    memcpy(record->data() + field->offset(), value->data, copy_len);
   }
   return rc;
 }
@@ -845,7 +846,8 @@ static RC record_reader_delete_adapter(Record *record, void *context)
   return record_deleter.delete_record(record);
 }
 
-RC Table::update_record(Trx *trx, Record *record, const std::vector<const FieldMeta *> &update_fields, const std::vector<Value> &values)
+RC Table::update_record(
+    Trx *trx, Record *record, const std::vector<const FieldMeta *> &update_fields, const std::vector<Value *> &values)
 {
   RC rc = RC::SUCCESS;
 

@@ -56,7 +56,7 @@ RC UpdateOperator::open()
     if (project_oper.next() == RC::SUCCESS) {
       return RC::INTERNAL;
     }
-    update_stmt_->get_values()[i] = cell.to_value();
+    *update_stmt_->get_values()[i] = cell.to_value();
   }
 
   Table *table = update_stmt_->table();

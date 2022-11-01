@@ -69,7 +69,8 @@ public:
   RC insert_multi_record(Trx *trx, int value_num, const Value *values, int group_num, const InsertGroup *groups);
   RC update_record(Trx *trx, const char *attribute_name, const Value *value, int condition_num,
       const Condition conditions[], int *updated_count);
-  RC update_record(Trx *trx, Record *record, const std::vector<const FieldMeta *> &update_fields, const std::vector<Value> &values);
+  RC update_record(Trx *trx, Record *record, const std::vector<const FieldMeta *> &update_fields,
+      const std::vector<Value *> &values);
   RC delete_record(Trx *trx, ConditionFilter *filter, int *deleted_count);
   RC delete_record(Trx *trx, Record *record);
   RC recover_delete_record(Record *record);
@@ -125,7 +126,8 @@ private:
   RC make_record(int value_num, const Value *values, char *&record_out);
 
 public:
-  RC update_record(Record *record, const std::vector<const FieldMeta *> &update_fields, const std::vector<Value> &values);
+  RC update_record(
+      Record *record, const std::vector<const FieldMeta *> &update_fields, const std::vector<Value *> &values);
   Index *find_index(const char *index_name) const;
   Index *find_index_by_field(const char *field_name) const;
 

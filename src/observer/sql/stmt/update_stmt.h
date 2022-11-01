@@ -43,11 +43,11 @@ public:
   {
     return update_fields_;
   }
-  const std::vector<Value> &values() const
+  const std::vector<Value *> &values() const
   {
     return values_;
   }
-  std::vector<Value> &get_values()
+  std::vector<Value *> &get_values()
   {
     return values_;
   }
@@ -68,7 +68,7 @@ public:
 private:
   Table *table_ = nullptr;
   std::vector<const FieldMeta *> update_fields_;
-  std::vector<Value> values_;
+  std::vector<Value *> values_;
   std::vector<SelectStmt *> select_stmt_;
   FilterStmt *filter_stmt_ = nullptr;
 };
