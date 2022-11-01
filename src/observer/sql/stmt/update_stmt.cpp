@@ -58,8 +58,8 @@ RC UpdateStmt::create(Db *db, const Updates &update_sql, Stmt *&stmt)
     update_fields.push_back(field_meta);
     values.emplace_back(const_cast<Value *>(&update_sql.values[i]));
     Stmt *select_stmt = nullptr;
-    if (update_sql.selects[i] != nullptr) {
-      RC rc = SelectStmt::create(db, *update_sql.selects[i], select_stmt);
+    if (!update_sql.is_value[i]) {
+      RC rc = SelectStmt::create(db, update_sql.selects[i], select_stmt);
       if (rc != RC::SUCCESS) {
         return rc;
       }

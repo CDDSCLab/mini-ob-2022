@@ -147,8 +147,9 @@ typedef struct {
   char *relation_name;            // Relation to update
   size_t attr_num;                // attributes in Set clause
   char *attribute_name[MAX_NUM];  // Attribute to update
+  bool is_value[MAX_NUM];         // value or select
   Value values[MAX_NUM];          // update value
-  Selects *selects[MAX_NUM];      // update select
+  Selects selects[MAX_NUM];       // update select
   size_t condition_num;           // Length of conditions in Where clause
   Condition conditions[MAX_NUM];  // conditions in Where clause
 } Updates;
