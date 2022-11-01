@@ -312,13 +312,15 @@ attr_def_list:
 attr_def:
     ID_get type LBRACE number RBRACE nullable {
         AttrInfo attribute;
-        attr_info_init(&attribute, CONTEXT->id, $2, $4, $6);
+        // 属性占用字节多一个用于表示是否为 NULL
+        attr_info_init(&attribute, CONTEXT->id, $2, $4 + 1, $6);
         create_table_append_attribute(&CONTEXT->ssql->sstr.create_table, &attribute);
         CONTEXT->value_length++;
     }
     | ID_get type nullable {
         AttrInfo attribute;
-        attr_info_init(&attribute, CONTEXT->id, $2, 4, $3);
+        // 属性占用字节多一个用于表示是否为 NULL
+        attr_info_init(&attribute, CONTEXT->id, $2, 4 + 1, $3);
         create_table_append_attribute(&CONTEXT->ssql->sstr.create_table, &attribute);
         CONTEXT->value_length++;
 	};

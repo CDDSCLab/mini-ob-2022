@@ -50,22 +50,26 @@ void value_init_integer(Value *value, int v)
 {
   value->type = INTS;
   value->data = malloc(sizeof(v));
+  value->is_null = false;
   memcpy(value->data, &v, sizeof(v));
 }
 void value_init_float(Value *value, float v)
 {
   value->type = FLOATS;
   value->data = malloc(sizeof(v));
+  value->is_null = false;
   memcpy(value->data, &v, sizeof(v));
 }
 void value_init_string(Value *value, const char *v)
 {
   value->type = CHARS;
+  value->is_null = false;
   value->data = strdup(v);
 }
 void value_init_null(Value *value)
 {
   value->type = NULLS;
+  value->is_null = true;
   int v = 0;
   value->data = malloc(sizeof(v));
   memcpy(value->data, &v, sizeof(v));
@@ -75,6 +79,7 @@ void value_destroy(Value *value)
   value->type = UNDEFINED;
   free(value->data);
   value->data = nullptr;
+  value->is_null = false;
 }
 
 void condition_init(Condition *condition, CompOp comp, int left_is_attr, RelAttr *left_attr, Value *left_value,
