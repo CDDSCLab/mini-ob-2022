@@ -492,7 +492,7 @@ RC Table::update_record(
       if (!field->nullable()) {
         return RC::GENERIC_ERROR;
       }
-      *((char *)(record->data() + field->offset()) + field->len()) = (char)true;
+      *((char *)(record->data() + field->offset()) + field->len() - 1) = (char)true;
     } else if (field_type != value_type) {
       if (field->type() == TEXTS && value_type == CHARS) {
         int id = *(int *)(record->data() + field->offset());
@@ -520,7 +520,7 @@ RC Table::update_record(
         copy_len = data_len + 1;
       }
     }
-    memcpy(record->data() + field->offset(), value->data, copy_len);
+    memcpy(record->data() + field->offset(), value->data, copy_len - 1);
   }
   return rc;
 }
