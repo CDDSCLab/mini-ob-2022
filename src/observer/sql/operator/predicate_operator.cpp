@@ -81,6 +81,18 @@ bool PredicateOperator::do_predicate(RowTuple &tuple)
       return true;
     }
 
+    // NULL 特殊处理
+    if (left_cell.attr_type() == NULLS || right_cell.attr_type() == NULLS) {
+      switch (comp) {
+        case IS_NULL:
+          return left_cell.attr_type() == NULLS;
+        case IS_NOT_NULL:
+          return left_cell.attr_type() != NULLS;
+        default:
+          return false;
+      }
+    }
+
     bool filter_result = false;
     if (comp == LIKE_OP) {
       filter_result = like(left_cell, right_cell);

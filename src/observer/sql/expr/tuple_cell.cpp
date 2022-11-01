@@ -52,7 +52,10 @@ void TupleCell::to_string(std::ostream &os) const
         os << s[i];
       }
       free(s);
-    }
+    } break;
+    case NULLS: {
+      os << "null";
+    } break;
     default: {
       LOG_WARN("unsupported attr type: %d", attr_type_);
     } break;
@@ -99,6 +102,8 @@ int TupleCell::compare(const TupleCell &other) const
         return compare_float(this->data_, other.data_);
       case CHARS:
         return compare_string(this->data_, this->length_, other.data_, other.length_);
+      case NULLS:
+        return 0;
       default: {
         LOG_WARN("unsupported type: %d", this->attr_type_);
       }
@@ -143,6 +148,8 @@ void TupleCell::plus(const TupleCell &other)
       case CHARS:
       case TEXTS:
       case DATES:
+      case NULLS:
+        LOG_WARN("Wrong type of summation.");
         break;
     }
   } else {

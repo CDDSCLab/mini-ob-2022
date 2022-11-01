@@ -63,7 +63,11 @@ RC InsertStmt::create(Db *db, const Inserts &inserts, Stmt *&stmt)
       const FieldMeta *field_meta = table_meta.field(j + sys_field_num);
       const AttrType field_type = field_meta->type();
       const AttrType value_type = values[j].type;
-      if (field_type != value_type) {  // TODO try to convert the value type to field type
+      if (value_type == NULLS) {
+        if (!field_meta->nullable()) {
+          return RC::GENERIC_ERROR;
+        }
+      } else if (field_type != value_type) {  // TODO try to convert the value type to field type
         auto value = const_cast<Value *>(values + j);
         RC rc = typecast(value_type, field_type, value);
         if (rc == RC::SCHEMA_FIELD_TYPE_MISMATCH) {

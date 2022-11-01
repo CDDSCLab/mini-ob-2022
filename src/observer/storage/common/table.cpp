@@ -433,7 +433,12 @@ RC Table::make_record(int value_num, const Value *values, char *&record_out)
   for (int i = 0; i < value_num; i++) {
     const FieldMeta *field = table_meta_.field(i + normal_field_start_index);
     const Value &value = values[i];
-    if (field->type() != value.type) {
+    // 检查 NULL
+    if (!field->nullable() && value.is_null) {
+      LOG_ERROR("Field %s is not nullable, but value is null", field->name());
+      return RC::CONSTRAINT_NOTNULL;
+    }
+    if (!value.is_null && field->type() != value.type) {
       if (field->type() == TEXTS && value.type == CHARS) {
         int id;
         insert_text(static_cast<char *>(value.data), &id);
@@ -464,7 +469,8 @@ RC Table::make_record(int value_num, const Value *values, char *&record_out)
         copy_len = data_len + 1;
       }
     }
-    memcpy(record + field->offset(), value.data, copy_len);
+    memcpy(record + field->offset(), value.data, copy_len - 1);
+    *((char *)(record + field->offset() + copy_len - 1)) = value.is_null;
   }
 
   record_out = record;
@@ -480,7 +486,14 @@ RC Table::update_record(
     auto value = const_cast<Value *>(values[i]);
     auto field_type = field->type();
     auto value_type = value->type;
-    if (field_type != value_type) {
+
+    // 处理更新时的类型问题
+    if (value_type == NULLS || value->is_null) {
+      if (!field->nullable()) {
+        return RC::GENERIC_ERROR;
+      }
+      *((char *)(record->data() + field->offset()) + field->len()) = (char)true;
+    } else if (field_type != value_type) {
       if (field->type() == TEXTS && value_type == CHARS) {
         int id = *(int *)(record->data() + field->offset());
         update_text(id, static_cast<char *>(value->data));

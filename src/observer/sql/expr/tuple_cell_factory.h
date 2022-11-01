@@ -57,6 +57,9 @@ public:
       case TEXTS: {
         // TODO(yueyang)
       }
+      case NULLS: {
+        // TODO(yueyang)
+      }
     }
     assert(false);
   }
@@ -75,6 +78,9 @@ public:
       case DATES:
         return GetDateTupleCell(INT32_MIN);
       case TEXTS: {
+        // TODO(yueyang)
+      }
+      case NULLS: {
         // TODO(yueyang)
       }
     }

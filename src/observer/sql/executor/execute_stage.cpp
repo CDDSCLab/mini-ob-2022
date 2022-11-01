@@ -692,7 +692,7 @@ RC ExecuteStage::do_insert(SQLStageEvent *sql_event)
     return RC::GENERIC_ERROR;
   }
 
-  InsertStmt *insert_stmt = (InsertStmt *)stmt;
+  auto insert_stmt = (InsertStmt *)stmt;
   Table *table = insert_stmt->table();
   RC rc;
   if (insert_stmt->group_amount() <= 1) {

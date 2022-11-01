@@ -123,7 +123,10 @@ public:
   void insert_combine(const AggregateKey &aggr_key, const AggregateValue &aggr_value)
   {
     if (hash_table_.count(aggr_key) == 0) {
+      // TODO: handle null
+      // hash_table_.insert({aggr_key, generate_initial_aggregate_value(&hash_table_[aggr_key], aggr_value)});
       hash_table_.insert({aggr_key, generate_initial_aggregate_value()});
+      // return;
     }
     combine_aggregate_values(&hash_table_[aggr_key], aggr_value);
   }

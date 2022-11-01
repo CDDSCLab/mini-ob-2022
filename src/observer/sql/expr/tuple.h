@@ -117,16 +117,19 @@ public:
     }
 
     const TupleCellSpec *spec = speces_[index];
-    FieldExpr *field_expr = (FieldExpr *)spec->expression();
+    auto field_expr = dynamic_cast<FieldExpr *>(spec->expression());
     const FieldMeta *field_meta = field_expr->field().meta();
     cell.set_type(field_meta->type());
     if (this->record_->data() == nullptr) {
       cell.set_data(this->record_->data());
-      cell.set_length(field_meta->len());
+      cell.set_length(field_meta->len() - 1);
       return RC::SUCCESS;
     }
+    if (*(bool *)(this->record_->data() + field_meta->offset() + field_meta->len() - 1)) {
+      cell.set_type(NULLS);
+    }
     cell.set_data(this->record_->data() + field_meta->offset());
-    cell.set_length(field_meta->len());
+    cell.set_length(field_meta->len() - 1);  // NOTE: 多的那个字节在 tuple 这一层被干掉
     return RC::SUCCESS;
   }
 
@@ -257,6 +260,7 @@ public:
   {
     tuple_cells_.clear();
     for (const auto &cell : aggr_cell) {
+      // TODO: handle null
       tuple_cells_.emplace_back(cell);
     }
     for (const auto &cell : group_by_cell) {
