@@ -16,6 +16,7 @@ See the Mulan PSL v2 for more details. */
 #define __OBSERVER_SQL_PARSER_PARSE_DEFS_H__
 
 #include <stddef.h>
+#include <stdbool.h>
 
 #define MAX_NUM 20
 #define MAX_REL_NAME 20
@@ -34,19 +35,21 @@ typedef struct _RelAttr {
 } RelAttr;
 
 typedef enum {
-  EQUAL_TO,     // "="          0
-  LESS_EQUAL,   // "<="         1
-  NOT_EQUAL,    // "<>"         2
-  LESS_THAN,    // "<"          3
-  GREAT_EQUAL,  // ">="         4
-  GREAT_THAN,   // ">"          5
-  LIKE_OP,      // "like"       6
-  NOT_LIKE_OP,  // "not like"   7
+  EQUAL_TO,     // "="            0
+  LESS_EQUAL,   // "<="           1
+  NOT_EQUAL,    // "<>"           2
+  LESS_THAN,    // "<"            3
+  GREAT_EQUAL,  // ">="           4
+  GREAT_THAN,   // ">"            5
+  LIKE_OP,      // "like"         6
+  NOT_LIKE_OP,  // "not like"     7
+  IS_NULL,      // "is null"      8
+  IS_NOT_NULL,  // "is not null"  9
   NO_OP
 } CompOp;
 
 // 属性值类型
-typedef enum { UNDEFINED, CHARS, TEXTS, INTS, FLOATS, DATES } AttrType;
+typedef enum { UNDEFINED, CHARS, TEXTS, INTS, FLOATS, DATES, NULLS } AttrType;
 
 // 属性值
 typedef struct _Value {
@@ -116,6 +119,7 @@ typedef struct {
   char *name;     // Attribute name
   AttrType type;  // Type of attribute
   size_t length;  // Length of attribute
+  bool nullable;  // Nullability of attribute
 } AttrInfo;
 
 // struct of create_table
@@ -213,13 +217,14 @@ void relation_attr_destroy(RelAttr *relation_attr);
 void value_init_integer(Value *value, int v);
 void value_init_float(Value *value, float v);
 void value_init_string(Value *value, const char *v);
+void value_init_null(Value *value);
 void value_destroy(Value *value);
 
 void condition_init(Condition *condition, CompOp comp, int left_is_attr, RelAttr *left_attr, Value *left_value,
     int right_is_attr, RelAttr *right_attr, Value *right_value);
 void condition_destroy(Condition *condition);
 
-void attr_info_init(AttrInfo *attr_info, const char *name, AttrType type, size_t length);
+void attr_info_init(AttrInfo *attr_info, const char *name, AttrType type, size_t length, bool nullable);
 void attr_info_destroy(AttrInfo *attr_info);
 
 void selects_init(Selects *selects, ...);

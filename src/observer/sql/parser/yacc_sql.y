@@ -128,7 +128,10 @@ ParserContext *get_context(yyscan_t scanner)
         LIKE
         INNER
         JOIN
+        IS
         NOT
+        NULL_TOKEN
+        NULLABLE
 
 %union {
   struct _RelAttr *_attr;
@@ -157,6 +160,7 @@ ParserContext *get_context(yyscan_t scanner)
 %type <_condition> condition;
 %type <_value> value;
 %type <number> number;
+%type <number> nullable;
 
 %type <_select> select_unit;
 
@@ -306,29 +310,18 @@ attr_def_list:
     ;
     
 attr_def:
-    ID_get type LBRACE number RBRACE 
-		{
-			AttrInfo attribute;
-			attr_info_init(&attribute, CONTEXT->id, $2, $4);
-			create_table_append_attribute(&CONTEXT->ssql->sstr.create_table, &attribute);
-			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].name =(char*)malloc(sizeof(char));
-			// strcpy(CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].name, CONTEXT->id); 
-			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].type = $2;  
-			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].length = $4;
-			CONTEXT->value_length++;
-		}
-    |ID_get type
-		{
-			AttrInfo attribute;
-			attr_info_init(&attribute, CONTEXT->id, $2, 4);
-			create_table_append_attribute(&CONTEXT->ssql->sstr.create_table, &attribute);
-			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].name=(char*)malloc(sizeof(char));
-			// strcpy(CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].name, CONTEXT->id); 
-			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].type=$2;  
-			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].length=4; // default attribute length
-			CONTEXT->value_length++;
-		}
-    ;
+    ID_get type LBRACE number RBRACE nullable {
+        AttrInfo attribute;
+        attr_info_init(&attribute, CONTEXT->id, $2, $4, $6);
+        create_table_append_attribute(&CONTEXT->ssql->sstr.create_table, &attribute);
+        CONTEXT->value_length++;
+    }
+    | ID_get type nullable {
+        AttrInfo attribute;
+        attr_info_init(&attribute, CONTEXT->id, $2, 4, $3);
+        create_table_append_attribute(&CONTEXT->ssql->sstr.create_table, &attribute);
+        CONTEXT->value_length++;
+	};
 number:
     NUMBER {$$ = $1;}
     ;
@@ -344,8 +337,12 @@ ID_get:
         char *temp=$1;
         snprintf(CONTEXT->id, sizeof(CONTEXT->id), "%s", temp);
     };
+nullable:
+      /* empty */ { $$ = false; }
+    | NULLABLE { $$ = true; }
+	| NOT NULL_TOKEN { $$ = false; }
+	;
 
-	
 insert:				/*insert   语句的语法解析树*/
     INSERT INTO ID VALUES LBRACE value value_list RBRACE v_list SEMICOLON 
 	{
@@ -381,23 +378,26 @@ value_list:
 	  }
     ;
 value:
-    NUMBER{	
-  		value_init_integer(&CONTEXT->values[CONTEXT->value_length++], $1);
-  		$$ = &CONTEXT->values[CONTEXT->value_length - 1];
-		CONTEXT->every_group_count++;
-		}
-    |FLOAT{
-  		value_init_float(&CONTEXT->values[CONTEXT->value_length++], $1);
-  		$$ = &CONTEXT->values[CONTEXT->value_length - 1];
-		CONTEXT->every_group_count++;
-		}
-    |SSS {
-		$1 = substr($1,1,strlen($1)-2);
-  		value_init_string(&CONTEXT->values[CONTEXT->value_length++], $1);
-  		$$ = &CONTEXT->values[CONTEXT->value_length - 1];
-		CONTEXT->every_group_count++;
-		}
-    ;
+    NUMBER {
+        value_init_integer(&CONTEXT->values[CONTEXT->value_length++], $1);
+        $$ = &CONTEXT->values[CONTEXT->value_length - 1];
+        CONTEXT->every_group_count++;
+    }
+    | FLOAT {
+        value_init_float(&CONTEXT->values[CONTEXT->value_length++], $1);
+        $$ = &CONTEXT->values[CONTEXT->value_length - 1];
+        CONTEXT->every_group_count++;
+	}
+    | SSS {
+        $1 = substr($1,1,strlen($1)-2);
+        value_init_string(&CONTEXT->values[CONTEXT->value_length++], $1);
+        $$ = &CONTEXT->values[CONTEXT->value_length - 1];
+        CONTEXT->every_group_count++;
+    }
+    | NULL_TOKEN {
+        value_init_null(&CONTEXT->values[CONTEXT->value_length++]);
+        CONTEXT->every_group_count++;
+    };
     
 delete:		/*  delete 语句的语法解析树*/
     DELETE FROM ID where SEMICOLON 
@@ -607,6 +607,38 @@ condition:
 		condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 1, &right_attr, NULL);
 		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
     }
+	| value null_comOp {
+		value_init_null(&CONTEXT->values[CONTEXT->value_length++]);
+
+		Value *left_value = &CONTEXT->values[CONTEXT->value_length - 2];
+		Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
+
+		Condition condition;
+		condition_init(&condition, CONTEXT->comp, 0, NULL, left_value, 0, NULL, right_value);
+		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+	}
+	| ID null_comOp {
+		RelAttr left_attr;
+		relation_attr_init(&left_attr, NULL, $1);
+
+		value_init_null(&CONTEXT->values[CONTEXT->value_length++]);
+		Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
+
+		Condition condition;
+		condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, NULL, right_value);
+		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+	}
+	| ID DOT ID null_comOp {
+		RelAttr left_attr;
+		relation_attr_init(&left_attr, $1, $3);
+
+		value_init_null(&CONTEXT->values[CONTEXT->value_length++]);
+		Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
+
+		Condition condition;
+		condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, NULL, right_value);
+		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+	}
     ;
 comOp:
   	  EQ { CONTEXT->comp = EQUAL_TO; }
@@ -617,6 +649,10 @@ comOp:
     | NE { CONTEXT->comp = NOT_EQUAL; }
     | LIKE { CONTEXT->comp = LIKE_OP; }
     | NOT LIKE { CONTEXT->comp = NOT_LIKE_OP; }
+    ;
+null_comOp:
+      IS NULL_TOKEN { CONTEXT->comp = IS_NULL; }
+    | IS NOT NULL_TOKEN { CONTEXT->comp = IS_NOT_NULL; }
     ;
 
 group:

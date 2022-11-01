@@ -56,6 +56,7 @@ QUOTE            [\'\"]
 [Ff][Rr][Oo][Mm]                                     RETURN_TOKEN(FROM);
 [Ww][Hh][Ee][Rr][Ee]                                 RETURN_TOKEN(WHERE);
 [Ll][Ii][Kk][Ee]                                     RETURN_TOKEN(LIKE);
+[Ii][Ss]                                             RETURN_TOKEN(IS);
 [Nn][Oo][Tt]                                         RETURN_TOKEN(NOT);
 [Aa][Nn][Dd]                                         RETURN_TOKEN(AND);
 [Ii][Nn][Ss][Ee][rR][tT]                             RETURN_TOKEN(INSERT);
@@ -69,9 +70,9 @@ QUOTE            [\'\"]
 [Rr][Oo][Ll][Ll][Bb][Aa][Cc][Kk]                     RETURN_TOKEN(TRX_ROLLBACK);
 [Ii][Nn][Tt]                                         RETURN_TOKEN(INT_T);
 [Cc][Hh][Aa][Rr]                                     RETURN_TOKEN(STRING_T);
-[Tt][Ee][Xx][Tt]				                             RETURN_TOKEN(TEXT_T);
+[Tt][Ee][Xx][Tt]                                     RETURN_TOKEN(TEXT_T);
 [Ff][Ll][Oo][Aa][Tt]                                 RETURN_TOKEN(FLOAT_T);
-[Dd][Aa][Tt][Ee]			                         RETURN_TOKEN(DATE_T);
+[Dd][Aa][Tt][Ee]                                     RETURN_TOKEN(DATE_T);
 [Ll][Oo][Aa][Dd]                                     RETURN_TOKEN(LOAD);
 [Dd][Aa][Tt][Aa]                                     RETURN_TOKEN(DATA);
 [Ii][Nn][Ff][Ii][Ll][Ee]                             RETURN_TOKEN(INFILE);
@@ -86,6 +87,8 @@ QUOTE            [\'\"]
 [Gg][Rr][Oo][Uu][Pp]                                 RETURN_TOKEN(GROUP);
 [Bb][Yy]                                             RETURN_TOKEN(BY);
 [Hh][Aa][Vv][Ii][Nn][Gg]                             RETURN_TOKEN(HAVING);
+[Nn][Uu][Ll][Ll]                                     RETURN_TOKEN(NULL_TOKEN);
+[Nn][Uu][Ll][Ll][Aa][Bb][Ll][Ee]                     RETURN_TOKEN(NULLABLE);
 {ID}                                                 yylval->string=strdup(yytext); RETURN_TOKEN(ID);
 "("                                                  RETURN_TOKEN(LBRACE);
 ")"                                                  RETURN_TOKEN(RBRACE);
