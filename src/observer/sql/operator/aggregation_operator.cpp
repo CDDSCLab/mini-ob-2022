@@ -43,7 +43,9 @@ RC AggregationOperator::next()
   for (int i = 0; i < aggregate_field_.size(); ++i) {
     if (aggregate_field_[i].aggr_type() == AGGR_AVG) {
       float data = *(float *)hash_table_iter_.Value().aggregates_[i].data();
-      data /= hash_table_iter_.Value().count;
+      if (hash_table_iter_.Value().count - hash_table_iter_.Value().null_count > 0) {
+        data /= (hash_table_iter_.Value().count - hash_table_iter_.Value().null_count);
+      }
       memcpy((void *)hash_table_iter_.Value().aggregates_[i].data(), &data, sizeof(data));
     }
   }
