@@ -64,7 +64,7 @@ public:
 
       project_oper.add_child(&final_pre);
       for (const Field &field : select_stmt->query_fields()) {
-        project_oper.my_add_projection(field.table(), field.meta());
+        project_oper.add_projection(field.table(), field.meta(), field.aggr_type(), true);
       }
       rc = project_oper.open();
       if (rc != RC::SUCCESS) {
@@ -103,7 +103,7 @@ public:
     pred_oper->add_child(scan_oper);
     auto aggr_oper = new AggregationOperator(select_stmt->aggr_fields(), select_stmt->group_by_fields());
     for (const Field &field : select_stmt->query_fields()) {
-      project_oper->add_projection(field.table(), field.meta(), field.aggr_type());
+      project_oper->add_projection(field.table(), field.meta(), field.aggr_type(), false);
     }
     if (select_stmt->aggr_fields().empty()) {
       project_oper->add_child(pred_oper);
