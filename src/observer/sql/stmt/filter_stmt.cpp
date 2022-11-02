@@ -18,6 +18,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/filter_stmt.h"
 #include "storage/common/db.h"
 #include "storage/common/table.h"
+#include "sql/expr/expression_factory.h"
 #include "util/util.h"
 
 FilterStmt::~FilterStmt()
@@ -97,76 +98,119 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
 
   Expression *left = nullptr;
   Expression *right = nullptr;
-  AttrType left_type = UNDEFINED;
-  AttrType right_type = UNDEFINED;
-  if (condition.left_is_attr) {
+  auto left_expr = &const_cast<Condition &>(condition).left_expr;
+  auto right_expr = &const_cast<Condition &>(condition).right_expr;
+  if (left_expr->expr_type == EXPR_ATTR && right_expr->expr_type == EXPR_VALUE) {
     Table *table = nullptr;
     const FieldMeta *field = nullptr;
-    rc = get_table_and_field(db, default_table, tables, condition.left_attr, table, field);
-    if (rc != RC::SUCCESS) {
-      LOG_WARN("cannot find attr");
-      return rc;
-    }
-    left = new FieldExpr(table, field, condition.left_attr.aggr_type);
-    left_type = field->type();
-    if (!condition.right_is_attr) {
-      if (field->type() == DATES && condition.right_value.type == CHARS) {
-        int date;
-        rc = char2date((const char *)condition.right_value.data, &date);
-        if (rc != RC::SUCCESS) {
-          return rc;
-        }
-        auto value = &const_cast<Condition &>(condition).right_value;
-        value->type = DATES;
-        memcpy(value->data, &date, sizeof(date));
-        right = new ValueExpr(*value);
+    rc = get_table_and_field(db, default_table, tables, left_expr->attr, table, field);
+    if (field->type() == DATES && right_expr->value.type == CHARS) {
+      int date;
+      rc = char2date((const char *)right_expr->value.data, &date);
+      if (rc != RC::SUCCESS) {
+        return rc;
       }
+      right_expr->value.type = DATES;
+      memcpy(right_expr->value.data, &date, sizeof(date));
     }
-  }
-
-  if (condition.right_is_attr) {
+  } else if (condition.left_expr.expr_type == EXPR_VALUE && condition.right_expr.expr_type == EXPR_ATTR) {
     Table *table = nullptr;
     const FieldMeta *field = nullptr;
-    rc = get_table_and_field(db, default_table, tables, condition.right_attr, table, field);
-    if (rc != RC::SUCCESS) {
-      LOG_WARN("cannot find attr");
-      delete left;
-      return rc;
-    }
-    right = new FieldExpr(table, field, condition.right_attr.aggr_type);
-    right_type = field->type();
-    if (!condition.left_is_attr) {
-      if (field->type() == DATES && condition.left_value.type == CHARS) {
-        int date;
-        rc = char2date((const char *)condition.left_value.data, &date);
-        if (rc != RC::SUCCESS) {
-          return rc;
-        }
-        auto value = &const_cast<Condition &>(condition).left_value;
-        value->type = DATES;
-        memcpy(value->data, &date, sizeof(date));
-        left = new ValueExpr(*value);
+    rc = get_table_and_field(db, default_table, tables, right_expr->attr, table, field);
+    if (field->type() == DATES && left_expr->value.type == CHARS) {
+      int date;
+      rc = char2date((const char *)left_expr->value.data, &date);
+      if (rc != RC::SUCCESS) {
+        return rc;
       }
+      left_expr->value.type = DATES;
+      memcpy(left_expr->value.data, &date, sizeof(date));
     }
   }
 
-  if (left == nullptr) {
-    left = new ValueExpr(condition.left_value);
-    left_type = condition.left_value.type;
-  }
+  //    if (comp == LIKE_OP || comp == NOT_LIKE_OP) {
+  //      if (right_expr->expr_type != EXPR_VALUE) {
+  //        return RC::INVALID_ARGUMENT;
+  //      } else if (left_type != CHARS || right_type != CHARS) {
+  //        return RC::INVALID_ARGUMENT;
+  //      }
+  //    }
 
-  if (right == nullptr) {
-    right = new ValueExpr(condition.right_value);
-    right_type = condition.right_value.type;
-  }
+  left = ExpressionFactory::NewExpression(condition.left_expr, db, default_table, tables);
+  right = ExpressionFactory::NewExpression(condition.right_expr, db, default_table, tables);
+  // TODO(yueyang): handle typecast
 
-  if (comp == LIKE_OP || comp == NOT_LIKE_OP) {
-    if (condition.right_is_attr) {
-      return RC::INVALID_ARGUMENT;
-    } else if (left_type != CHARS || right_type != CHARS) {
-      return RC::INVALID_ARGUMENT;
-    }
-  }
+  //  AttrType left_type = UNDEFINED;
+  //  AttrType right_type = UNDEFINED;
+  //  if (condition.left_is_expr) {
+  //    Table *table = nullptr;
+  //    const FieldMeta *field = nullptr;
+  //    rc = get_table_and_field(db, default_table, tables, condition.left_attr, table, field);
+  //    if (rc != RC::SUCCESS) {
+  //      LOG_WARN("cannot find attr");
+  //      return rc;
+  //    }
+  //    left_field = new FieldExpr(table, field);
+  //    left_type = field->type();
+  //    if (!condition.right_is_expr) {
+  //      if (field->type() == DATES && condition.right_value.type == CHARS) {
+  //        int date;
+  //        rc = char2date((const char *)condition.right_value.data, &date);
+  //        if (rc != RC::SUCCESS) {
+  //          return rc;
+  //        }
+  //        auto value = &const_cast<Condition &>(condition).right_value;
+  //        value->type = DATES;
+  //        memcpy(value->data, &date, sizeof(date));
+  //        right_field = new ValueExpr(*value);
+  //      }
+  //    }
+  //  }
+  //
+  //
+  //  if (condition.right_is_expr) {
+  //    Table *table = nullptr;
+  //    const FieldMeta *field = nullptr;
+  //    rc = get_table_and_field(db, default_table, tables, condition.right_attr, table, field);
+  //    if (rc != RC::SUCCESS) {
+  //      LOG_WARN("cannot find attr");
+  //      delete left_field;
+  //      return rc;
+  //    }
+  //    right_field = new FieldExpr(table, field);
+  //    right_type = field->type();
+  //    if (!condition.left_is_expr) {
+  //      if (field->type() == DATES && condition.left_value.type == CHARS) {
+  //        int date;
+  //        rc = char2date((const char *)condition.left_value.data, &date);
+  //        if (rc != RC::SUCCESS) {
+  //          return rc;
+  //        }
+  //        auto value = &const_cast<Condition &>(condition).left_value;
+  //        value->type = DATES;
+  //        memcpy(value->data, &date, sizeof(date));
+  //        left_field = new ValueExpr(*value);
+  //      }
+  //    }
+  //  }
+  //
+  //  if (left_field == nullptr) {
+  //    left_field = new ValueExpr(condition.left_value);
+  //    left_type = condition.left_value.type;
+  //  }
+  //
+  //  if (right_field == nullptr) {
+  //    right_field = new ValueExpr(condition.right_value);
+  //    right_type = condition.right_value.type;
+  //  }
+  //
+  //  if (comp == LIKE_OP || comp == NOT_LIKE_OP) {
+  //    if (condition.right_is_expr) {
+  //      return RC::INVALID_ARGUMENT;
+  //    } else if (left_type != CHARS || right_type != CHARS) {
+  //      return RC::INVALID_ARGUMENT;
+  //    }
+  //  }
 
   filter_unit = new FilterUnit;
   filter_unit->set_comp(comp);

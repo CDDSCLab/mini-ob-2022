@@ -89,14 +89,8 @@ typedef struct _Condition {
   CompOp comp;  // comparison operator
   Expr left_expr;
   Expr right_expr;
-  int left_is_attr;    // TRUE if left-hand side is an attribute
-                       // 1时，操作符左边是属性名，0时，是属性值
-  Value left_value;    // left-hand side value if left_is_attr = FALSE
-  RelAttr left_attr;   // left-hand side attribute
-  int right_is_attr;   // TRUE if right-hand side is an attribute
-                       // 1时，操作符右边是属性名，0时，是属性值
-  RelAttr right_attr;  // right-hand side attribute if right_is_attr = TRUE 右边的属性
-  Value right_value;   // right-hand side value if right_is_attr = FALSE
+  RelAttr left_attr;  // left-hand side attribute
+  Value right_value;  // right-hand side value if right_is_attr = FALSE
 } Condition;
 
 typedef enum { ORDER_ASC = 0, ORDER_DESC } OrderType;

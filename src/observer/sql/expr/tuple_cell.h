@@ -15,6 +15,7 @@ See the Mulan PSL v2 for more details. */
 #pragma once
 
 #include <iostream>
+#include <cassert>
 #include "storage/common/table.h"
 #include "storage/common/field_meta.h"
 

@@ -173,6 +173,8 @@ void selects_append_attribute(Selects *selects, RelAttr *rel_attr)
 void selects_append_expr(Selects *selects, Expr *expr)
 {
   selects->exprs[selects->expr_num++] = *expr;
+  // TODO: 仅为了本地测试能跑， 后面应该删掉。
+  selects->attributes[selects->attr_num++] = expr->attr;
 }
 void selects_append_relation(Selects *selects, const char *relation_name)
 {
