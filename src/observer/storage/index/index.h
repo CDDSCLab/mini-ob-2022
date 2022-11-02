@@ -43,6 +43,16 @@ public:
     return index_meta_;
   }
 
+  const FieldMeta &field_meta() const
+  {
+    return field_meta_;
+  }
+
+  const std::vector<FieldMeta> &other_field_meta() const
+  {
+    return other_field_meta_;
+  }
+
   virtual RC insert_entry(const char *record, const RID *rid) = 0;
   virtual RC delete_entry(const char *record, const RID *rid) = 0;
 

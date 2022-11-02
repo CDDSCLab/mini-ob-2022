@@ -27,14 +27,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/version.h"
 namespace common {
 
-#ifndef gettid
-#if defined(__MACH__)
 #define gettid() ((long long)pthread_self())
-#elif defined(LINUX)
-#define gettid() ((long long)pthread_self())
-#endif
-
-#endif
 
 inline const std::string &theSwVersion()
 {

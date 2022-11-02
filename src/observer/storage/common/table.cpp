@@ -1037,10 +1037,28 @@ RC Table::rollback_delete(Trx *trx, const RID &rid)
   return trx->rollback_delete(this, record);  // update record in place
 }
 
+bool Table::check_null_in_record_of_index(const char *record, Index *index)
+{
+  auto field_meta = index->field_meta();
+  auto all_field_meta = index->other_field_meta();
+  all_field_meta.emplace_back(field_meta);
+  for (auto field_meta : all_field_meta) {
+    auto value_is_null = *((char *)(record + field_meta.offset() + field_meta.len() - 1));
+    if (value_is_null == 1) {
+      return true;
+    }
+  }
+  return false;
+}
+
 std::pair<RC, Index *> Table::insert_entry_of_indexes(const char *record, const RID &rid)
 {
   RC rc = RC::SUCCESS;
   for (Index *index : indexes_) {
+    if (check_null_in_record_of_index(record, index)) {
+      return std::pair<RC, Index *>(RC::SUCCESS, nullptr);
+    }
+
     rc = index->insert_entry(record, &rid);
     if (rc != RC::SUCCESS) {
       return std::pair<RC, Index *>(rc, index);
@@ -1053,6 +1071,9 @@ RC Table::delete_entry_of_indexes(const char *record, const RID &rid, bool error
 {
   RC rc = RC::SUCCESS;
   for (Index *index : indexes_) {
+    if (check_null_in_record_of_index(record, index)) {
+      return RC::SUCCESS;
+    }
     if (index == fail_index && index->index_meta().queryIsUnique() == 1) {
       return RC::SUCCESS;
     }

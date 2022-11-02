@@ -131,6 +131,7 @@ public:
       Record *record, const std::vector<const FieldMeta *> &update_fields, const std::vector<Value *> &values);
   Index *find_index(const char *index_name) const;
   Index *find_index_by_field(const char *field_name) const;
+  bool check_null_in_record_of_index(const char *record, Index *index);
 
 private:
   std::string base_dir_;
