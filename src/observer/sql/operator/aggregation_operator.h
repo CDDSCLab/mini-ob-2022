@@ -120,7 +120,11 @@ public:
       }
 
       if (AttrType::DATES == aggr_field[i].attr_type()) {
-        result->aggregates_[i].set_type(INTS);
+        if (AggrType::AGGR_COUNT == aggr_field[i].aggr_type()) {
+          result->aggregates_[i].set_type(INTS);
+        } else {
+          result->aggregates_[i].set_type(DATES);
+        }
       } else {
         result->aggregates_[i].set_type(aggr_field[i].attr_type());
       }
