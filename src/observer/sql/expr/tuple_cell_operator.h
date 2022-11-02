@@ -16,7 +16,10 @@ public:
       Value value;
       value_init_integer(&value, result);
       return {INTS, static_cast<char *>(value.data)};
-    } else if (left.attr_type() == FLOATS && right.attr_type() == FLOATS) {
+    }
+    if ((left.attr_type() == INTS && right.attr_type() == FLOATS) ||
+        (left.attr_type() == FLOATS && right.attr_type() == INTS) ||
+        (left.attr_type() == FLOATS && right.attr_type() == FLOATS)) {
       float result = TupleCellToFloat(left) + TupleCellToFloat(right);
       Value value;
       value_init_float(&value, result);
@@ -32,7 +35,10 @@ public:
       Value value;
       value_init_integer(&value, result);
       return {INTS, static_cast<char *>(value.data)};
-    } else if (left.attr_type() == FLOATS && right.attr_type() == FLOATS) {
+    }
+    if ((left.attr_type() == INTS && right.attr_type() == FLOATS) ||
+        (left.attr_type() == FLOATS && right.attr_type() == INTS) ||
+        (left.attr_type() == FLOATS && right.attr_type() == FLOATS)) {
       float result = TupleCellToFloat(left) - TupleCellToFloat(right);
       Value value;
       value_init_float(&value, result);
@@ -48,7 +54,10 @@ public:
       Value value;
       value_init_integer(&value, result);
       return {INTS, static_cast<char *>(value.data)};
-    } else if (left.attr_type() == FLOATS && right.attr_type() == FLOATS) {
+    }
+    if ((left.attr_type() == INTS && right.attr_type() == FLOATS) ||
+        (left.attr_type() == FLOATS && right.attr_type() == INTS) ||
+        (left.attr_type() == FLOATS && right.attr_type() == FLOATS)) {
       float result = TupleCellToFloat(left) * TupleCellToFloat(right);
       Value value;
       value_init_float(&value, result);
@@ -60,13 +69,11 @@ public:
 
   static inline TupleCell Divide(const TupleCell &left, const TupleCell &right)
   {
-    if (left.attr_type() == INTS && right.attr_type() == INTS) {
-      float result = (float)TupleCellToInt(left) / TupleCellToInt(right);
-      Value value;
-      value_init_float(&value, result);
-      return {FLOATS, static_cast<char *>(value.data)};
-    } else if (left.attr_type() == FLOATS && right.attr_type() == FLOATS) {
-      float result = TupleCellToFloat(left) - TupleCellToFloat(right);
+    if ((left.attr_type() == INTS && right.attr_type() == INTS) ||
+        (left.attr_type() == INTS && right.attr_type() == FLOATS) ||
+        (left.attr_type() == FLOATS && right.attr_type() == INTS) ||
+        (left.attr_type() == FLOATS && right.attr_type() == FLOATS)) {
+      float result = TupleCellToFloat(left) / TupleCellToFloat(right);
       Value value;
       value_init_float(&value, result);
       return {FLOATS, static_cast<char *>(value.data)};
@@ -79,7 +86,7 @@ public:
     if (left.attr_type() == INTS) {
       int result = -TupleCellToInt(left);
       Value value;
-      value_init_float(&value, result);
+      value_init_integer(&value, result);
       return {INTS, static_cast<char *>(value.data)};
     } else if (left.attr_type() == FLOATS) {
       float result = -TupleCellToFloat(left);
@@ -100,9 +107,12 @@ public:
 
   static inline float TupleCellToFloat(const TupleCell &cell)
   {
-    if (cell.attr_type() != FLOATS) {
-      assert(false);
+    if (cell.attr_type() == INTS) {
+      return *(int *)cell.data();
     }
-    return *(float *)cell.data();
+    if (cell.attr_type() == FLOATS) {
+      return *(float *)cell.data();
+    }
+    assert(false);
   }
 };
