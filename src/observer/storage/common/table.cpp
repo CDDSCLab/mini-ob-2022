@@ -519,8 +519,10 @@ RC Table::update_record(
       if (copy_len > data_len) {
         copy_len = data_len + 1;
       }
+      memcpy(record->data() + field->offset(), value->data, copy_len);
+    } else {
+      memcpy(record->data() + field->offset(), value->data, field->len() - 1);
     }
-    memcpy(record->data() + field->offset(), value->data, copy_len - 1);
   }
   return rc;
 }
