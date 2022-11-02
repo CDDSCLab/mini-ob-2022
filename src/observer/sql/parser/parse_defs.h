@@ -35,16 +35,20 @@ typedef struct _RelAttr {
 } RelAttr;
 
 typedef enum {
-  EQUAL_TO,     // "="            0
-  LESS_EQUAL,   // "<="           1
-  NOT_EQUAL,    // "<>"           2
-  LESS_THAN,    // "<"            3
-  GREAT_EQUAL,  // ">="           4
-  GREAT_THAN,   // ">"            5
-  LIKE_OP,      // "like"         6
-  NOT_LIKE_OP,  // "not like"     7
-  IS_NULL,      // "is null"      8
-  IS_NOT_NULL,  // "is not null"  9
+  EQUAL_TO,       // "="            0
+  LESS_EQUAL,     // "<="           1
+  NOT_EQUAL,      // "<>"           2
+  LESS_THAN,      // "<"            3
+  GREAT_EQUAL,    // ">="           4
+  GREAT_THAN,     // ">"            5
+  LIKE_OP,        // "like"         6
+  NOT_LIKE_OP,    // "not like"     7
+  IS_NULL,        // "is null"      8
+  IS_NOT_NULL,    // "is not null"  9
+  IN_OP,          // "in"           10
+  NOT_IN_OP,      // "not in"       11
+  EXISTS_OP,      // "exists"       12
+  NOT_EXISTS_OP,  // "not exists"   13
   NO_OP
 } CompOp;
 
@@ -58,12 +62,37 @@ typedef struct _Value {
   char is_null;
 } Value;
 
+typedef enum {
+  EXPR_NONE,
+  EXPR_PLUS,
+  EXPR_MINUS,
+  EXPR_MULTIPLY,
+  EXPR_DIVIDE,
+  EXPR_NEGATIVE,
+  EXPR_VALUE,
+  EXPR_ATTR,
+  EXPR_SELECT,
+} ExprType;
+
+typedef struct _Expr {
+  ExprType expr_type;
+  struct _Expr *left;
+  struct _Expr *right;
+  Value value;
+  RelAttr attr;
+  struct _Selects *select;
+} Expr;
+
+typedef enum { CONDITION_UNDEFINED, CONDITION_ATTR, CONDITION_VALUE, CONDITION_SELECT } ConditionType;
+
 typedef struct _Condition {
+  CompOp comp;  // comparison operator
+  Expr left_expr;
+  Expr right_expr;
   int left_is_attr;    // TRUE if left-hand side is an attribute
                        // 1时，操作符左边是属性名，0时，是属性值
   Value left_value;    // left-hand side value if left_is_attr = FALSE
   RelAttr left_attr;   // left-hand side attribute
-  CompOp comp;         // comparison operator
   int right_is_attr;   // TRUE if right-hand side is an attribute
                        // 1时，操作符右边是属性名，0时，是属性值
   RelAttr right_attr;  // right-hand side attribute if right_is_attr = TRUE 右边的属性
@@ -81,6 +110,8 @@ typedef struct _Order {
 // struct of select
 typedef struct _Selects {
   size_t attr_num;                    // Length of attrs in Select clause
+  Expr exprs[MAX_NUM];                // express in Select clause
+  size_t expr_num;                    // Length of express in Select clause
   RelAttr attributes[MAX_NUM];        // attrs in Select clause
   size_t relation_num;                // Length of relations in From clause
   char *relations[MAX_NUM];           // relations in From clause
@@ -231,8 +262,13 @@ void value_init_string(Value *value, const char *v);
 void value_init_null(Value *value);
 void value_destroy(Value *value);
 
-void condition_init(Condition *condition, CompOp comp, int left_is_attr, RelAttr *left_attr, Value *left_value,
-    int right_is_attr, RelAttr *right_attr, Value *right_value);
+void expr_init_value(Expr *expr, Value *value);
+void expr_init_attr(Expr *expr, RelAttr *relation_attr);
+void expr_init_select(Expr *expr, Selects *selects);
+void expr_init_expr(Expr *expr, ExprType expr_type, Expr *left_expr, Expr *right_expr);
+void expr_destroy(Expr *expr);
+
+void condition_init(Condition *condition, CompOp comp, Expr *left_expr, Expr *right_expr);
 void condition_destroy(Condition *condition);
 
 void attr_info_init(AttrInfo *attr_info, const char *name, AttrType type, size_t length, bool nullable);
@@ -240,6 +276,7 @@ void attr_info_destroy(AttrInfo *attr_info);
 
 void selects_init(Selects *selects, ...);
 void selects_append_attribute(Selects *selects, RelAttr *rel_attr);
+void selects_append_expr(Selects *selects, Expr *expr);
 void selects_append_relation(Selects *selects, const char *relation_name);
 void selects_append_conditions(Selects *selects, Condition conditions[], size_t condition_num);
 void selects_append_groups(Selects *selects, RelAttr *rel_attr);

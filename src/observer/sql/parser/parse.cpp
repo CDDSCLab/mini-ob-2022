@@ -82,36 +82,74 @@ void value_destroy(Value *value)
   value->is_null = false;
 }
 
-void condition_init(Condition *condition, CompOp comp, int left_is_attr, RelAttr *left_attr, Value *left_value,
-    int right_is_attr, RelAttr *right_attr, Value *right_value)
+void expr_init_value(Expr *expr, Value *value)
 {
-  condition->comp = comp;
-  condition->left_is_attr = left_is_attr;
-  if (left_is_attr) {
-    condition->left_attr = *left_attr;
-  } else {
-    condition->left_value = *left_value;
-  }
-
-  condition->right_is_attr = right_is_attr;
-  if (right_is_attr) {
-    condition->right_attr = *right_attr;
-  } else {
-    condition->right_value = *right_value;
+  expr->expr_type = EXPR_VALUE;
+  expr->value = *value;
+}
+void expr_init_attr(Expr *expr, RelAttr *relation_attr)
+{
+  expr->expr_type = EXPR_ATTR;
+  expr->attr = *relation_attr;
+}
+void expr_init_select(Expr *expr, Selects *selects)
+{
+  expr->expr_type = EXPR_SELECT;
+  expr->select = selects;
+}
+void expr_init_expr(Expr *expr, ExprType expr_type, Expr *left_expr, Expr *right_expr)
+{
+  expr->expr_type = expr_type;
+  expr->left = (Expr *)malloc(sizeof(Expr));
+  expr->right = (Expr *)malloc(sizeof(Expr));
+  *expr->left = *left_expr;
+  if (right_expr != nullptr) {
+    *expr->right = *right_expr;
   }
 }
+void expr_destroy(Expr *expr)
+{
+  if (expr == nullptr) {
+    return;
+  }
+  switch (expr->expr_type) {
+    case EXPR_PLUS:
+    case EXPR_MINUS:
+    case EXPR_MULTIPLY:
+    case EXPR_DIVIDE: {
+      expr_destroy(expr->left);
+      expr_destroy(expr->right);
+    } break;
+    case EXPR_NEGATIVE: {
+      expr_destroy(expr->left);
+    } break;
+    case EXPR_VALUE: {
+      value_destroy(&expr->value);
+    } break;
+    case EXPR_ATTR: {
+      relation_attr_destroy(&expr->attr);
+    } break;
+    case EXPR_SELECT: {
+      // TODO(yueyang): destroy select.
+    } break;
+    case EXPR_NONE:
+    default: {
+      assert(false);
+    } break;
+  }
+}
+
+void condition_init(Condition *condition, CompOp comp, Expr *left_expr, Expr *right_expr)
+{
+  condition->comp = comp;
+  condition->left_expr = *left_expr;
+  condition->right_expr = *right_expr;
+}
+
 void condition_destroy(Condition *condition)
 {
-  if (condition->left_is_attr) {
-    relation_attr_destroy(&condition->left_attr);
-  } else {
-    value_destroy(&condition->left_value);
-  }
-  if (condition->right_is_attr) {
-    relation_attr_destroy(&condition->right_attr);
-  } else {
-    value_destroy(&condition->right_value);
-  }
+  expr_destroy(&condition->left_expr);
+  expr_destroy(&condition->right_expr);
 }
 
 void attr_info_init(AttrInfo *attr_info, const char *name, AttrType type, size_t length, bool nullable)
@@ -131,6 +169,10 @@ void selects_init(Selects *selects, ...);
 void selects_append_attribute(Selects *selects, RelAttr *rel_attr)
 {
   selects->attributes[selects->attr_num++] = *rel_attr;
+}
+void selects_append_expr(Selects *selects, Expr *expr)
+{
+  selects->exprs[selects->expr_num++] = *expr;
 }
 void selects_append_relation(Selects *selects, const char *relation_name)
 {
@@ -168,6 +210,7 @@ void selects_append_order(Selects *selects, char *attribute_name, OrderType type
 
 void selects_destroy(Selects *selects)
 {
+  // TODO handle destroy expr.
   for (size_t i = 0; i < selects->attr_num; i++) {
     relation_attr_destroy(&selects->attributes[i]);
   }

@@ -16,9 +16,12 @@ typedef struct ParserContext {
   Selects selects[MAX_NUM];
   size_t condition_length;
   size_t value_length;
+  size_t attr_length;
+  size_t expr_length;
   Value values[MAX_NUM];
   Condition conditions[MAX_NUM];
-  CompOp comp;
+  RelAttr attrs[MAX_NUM];
+  Expr exprs[MAX_NUM * 10];
   char id[MAX_NUM];
 
   // add by us
@@ -126,6 +129,8 @@ ParserContext *get_context(yyscan_t scanner)
         GE
         NE
         LIKE
+        IN
+        EXISTS
         INNER
         JOIN
         IS
@@ -134,12 +139,17 @@ ParserContext *get_context(yyscan_t scanner)
         NULLABLE
         ORDER
         ASC
+        PLUS
+        MINUS
+        STAR
+        DIVIDE
 
 %union {
   struct _RelAttr *_attr;
   struct _Condition *_condition;
   struct _Value *_value;
   struct _Selects *_select;
+  struct _Expr *_expr;
   char *string;
   int number;
   float floats;
@@ -151,7 +161,6 @@ ParserContext *get_context(yyscan_t scanner)
 %token <string> ID
 %token <string> PATH
 %token <string> SSS
-%token <string> STAR
 %token <string> STRING_V
 // 非终结符
 
@@ -162,9 +171,16 @@ ParserContext *get_context(yyscan_t scanner)
 %type <_condition> condition;
 %type <_value> value;
 %type <number> number;
+%type <number> comOp;
+%type <number> null_comOp;
 %type <number> nullable;
 
 %type <_select> select_unit;
+%type <_expr> expr;
+%type <_expr> expr0;
+%type <_expr> expr1;
+%type <_expr> expr2;
+%type <_expr> expr3;
 
 %%
 
@@ -383,24 +399,24 @@ value_list:
     ;
 value:
     NUMBER {
-        value_init_integer(&CONTEXT->values[CONTEXT->value_length++], $1);
-        $$ = &CONTEXT->values[CONTEXT->value_length - 1];
+        value_init_integer(&CONTEXT->values[CONTEXT->value_length], $1);
+        $$ = &CONTEXT->values[CONTEXT->value_length++];
         CONTEXT->every_group_count++;
     }
     | FLOAT {
-        value_init_float(&CONTEXT->values[CONTEXT->value_length++], $1);
-        $$ = &CONTEXT->values[CONTEXT->value_length - 1];
+        value_init_float(&CONTEXT->values[CONTEXT->value_length], $1);
+        $$ = &CONTEXT->values[CONTEXT->value_length++];
         CONTEXT->every_group_count++;
 	}
     | SSS {
         $1 = substr($1,1,strlen($1)-2);
-        value_init_string(&CONTEXT->values[CONTEXT->value_length++], $1);
-        $$ = &CONTEXT->values[CONTEXT->value_length - 1];
+        value_init_string(&CONTEXT->values[CONTEXT->value_length], $1);
+        $$ = &CONTEXT->values[CONTEXT->value_length++];
         CONTEXT->every_group_count++;
     }
     | NULL_TOKEN {
-        value_init_null(&CONTEXT->values[CONTEXT->value_length++]);
-        $$ = &CONTEXT->values[CONTEXT->value_length - 1];
+        value_init_null(&CONTEXT->values[CONTEXT->value_length]);
+        $$ = &CONTEXT->values[CONTEXT->value_length++];
         CONTEXT->every_group_count++;
     };
     
@@ -453,37 +469,86 @@ select_unit:
     };
 
 select_attr:
-    STAR select_attr_list {
+     STAR select_attr_list {
         RelAttr attr;
         relation_attr_init(&attr, NULL, "*");
-        selects_append_attribute(&CONTEXT->selects[CONTEXT->select_length], &attr);
+        expr_init_attr(&CONTEXT->exprs[CONTEXT->expr_length], &attr);
+        selects_append_expr(&CONTEXT->selects[CONTEXT->select_length], &CONTEXT->exprs[CONTEXT->expr_length++]);
     }
-    | attr select_attr_list {
-        selects_append_attribute(&CONTEXT->selects[CONTEXT->select_length], $1);
-        free($1);
-    }
-    | aggr_attr select_attr_list {
-        selects_append_attribute(&CONTEXT->selects[CONTEXT->select_length], $1);
-        free($1);
+    | expr select_attr_list {
+        selects_append_expr(&CONTEXT->selects[CONTEXT->select_length], $1);
     };
 select_attr_list:
     /* empty */
-    | COMMA attr select_attr_list {
-        selects_append_attribute(&CONTEXT->selects[CONTEXT->select_length], $2);
-        free($2);
-    }
-    | COMMA aggr_attr select_attr_list {
-        selects_append_attribute(&CONTEXT->selects[CONTEXT->select_length], $2);
-        free($2);
+    | COMMA expr select_attr_list {
+        selects_append_expr(&CONTEXT->selects[CONTEXT->select_length], $2);
     };
+expr:
+    expr0 {
+        $$ = $1;
+    }
+    | LBRACE select_unit RBRACE {
+        expr_init_select(&CONTEXT->exprs[CONTEXT->expr_length], $2);
+        $$ = &CONTEXT->exprs[CONTEXT->expr_length++];
+    };
+expr0:
+    expr PLUS expr1 {
+        expr_init_expr(&CONTEXT->exprs[CONTEXT->expr_length], EXPR_PLUS, $1, $3);
+        $$ = &CONTEXT->exprs[CONTEXT->expr_length++];
+    }
+    | expr MINUS expr1 {
+        expr_init_expr(&CONTEXT->exprs[CONTEXT->expr_length], EXPR_MINUS, $1, $3);
+        $$ = &CONTEXT->exprs[CONTEXT->expr_length++];
+    }
+    | expr1 {
+        $$ = $1;
+    };
+expr1:
+    expr1 STAR expr2 {
+        expr_init_expr(&CONTEXT->exprs[CONTEXT->expr_length], EXPR_MULTIPLY, $1, $3);
+        $$ = &CONTEXT->exprs[CONTEXT->expr_length++];
+    }
+    | expr1 DIVIDE expr2 {
+        expr_init_expr(&CONTEXT->exprs[CONTEXT->expr_length], EXPR_DIVIDE, $1, $3);
+        $$ = &CONTEXT->exprs[CONTEXT->expr_length++];
+    }
+    | expr2 {
+        $$ = $1;
+    };
+expr2:
+    MINUS expr3 {
+        expr_init_expr(&CONTEXT->exprs[CONTEXT->expr_length], EXPR_NEGATIVE, $2, NULL);
+        $$ = &CONTEXT->exprs[CONTEXT->expr_length++];
+    }
+    |
+    expr3 {
+        $$ = $1;
+    };
+expr3:
+    LBRACE expr0 RBRACE {
+        $$ = $2;
+    }
+    | attr {
+        expr_init_attr(&CONTEXT->exprs[CONTEXT->expr_length], $1);
+        $$ = &CONTEXT->exprs[CONTEXT->expr_length++];
+    }
+    | aggr_attr {
+        expr_init_attr(&CONTEXT->exprs[CONTEXT->expr_length], $1);
+        $$ = &CONTEXT->exprs[CONTEXT->expr_length++];
+    }
+    | value {
+        expr_init_value(&CONTEXT->exprs[CONTEXT->expr_length], $1);
+        $$ = &CONTEXT->exprs[CONTEXT->expr_length++];
+    };
+
 attr:
     ID {
-        RelAttr *attr = (RelAttr *)(malloc(sizeof(RelAttr)));
+        RelAttr *attr = &CONTEXT->attrs[CONTEXT->attr_length++];
         relation_attr_init(attr, NULL, $1);
         $$ = attr;
     }
     | ID DOT ID {
-        RelAttr *attr = (RelAttr *)(malloc(sizeof(RelAttr)));
+        RelAttr *attr = &CONTEXT->attrs[CONTEXT->attr_length++];
         relation_attr_init(attr, $1, $3);
         $$ = attr;
     };
@@ -493,13 +558,13 @@ aggr_attr:
         $$ = $3;
     }
     | aggr_type LBRACE STAR RBRACE {
-        RelAttr *attr = (RelAttr *)(malloc(sizeof(RelAttr)));
+        RelAttr *attr = &CONTEXT->attrs[CONTEXT->attr_length++];
         relation_attr_init(attr, NULL, "*");
         relation_attr_aggr(attr, $1);
         $$ = attr;
     }
     | aggr_type LBRACE number RBRACE {
-        RelAttr *attr = (RelAttr *)(malloc(sizeof(RelAttr)));
+        RelAttr *attr = &CONTEXT->attrs[CONTEXT->attr_length++];
         if ($3 != 1) {
             YYERROR;
         }
@@ -545,151 +610,103 @@ condition_list:
 				// CONTEXT->conditions[CONTEXT->condition_length++]=*$2;
 			}
     ;
+
 condition:
-    ID comOp value {
-        RelAttr left_attr;
-        relation_attr_init(&left_attr, NULL, $1);
-
-		Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
-
-		Condition condition;
-		condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, NULL, right_value);
-		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
-	}
-	| value comOp value {
-		Value *left_value = &CONTEXT->values[CONTEXT->value_length - 2];
-		Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
-
-		Condition condition;
-		condition_init(&condition, CONTEXT->comp, 0, NULL, left_value, 0, NULL, right_value);
-		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
-	}
-	| ID comOp ID {
-		RelAttr left_attr;
-		relation_attr_init(&left_attr, NULL, $1);
-		RelAttr right_attr;
-		relation_attr_init(&right_attr, NULL, $3);
-
-		Condition condition;
-		condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 1, &right_attr, NULL);
-		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
-	}
-    | value comOp ID {
-		Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
-		RelAttr right_attr;
-		relation_attr_init(&right_attr, NULL, $3);
-
-		Condition condition;
-		condition_init(&condition, CONTEXT->comp, 0, NULL, left_value, 1, &right_attr, NULL);
-		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
-	}
-    | ID DOT ID comOp value {
-		RelAttr left_attr;
-		relation_attr_init(&left_attr, $1, $3);
-		Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
-
-		Condition condition;
-		condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, NULL, right_value);
-		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+    expr comOp expr {
+        Condition condition;
+        condition_init(&condition, $2, $1, $3);
+        CONTEXT->conditions[CONTEXT->condition_length++] = condition;
     }
-    | value comOp ID DOT ID {
-		Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
-
-		RelAttr right_attr;
-		relation_attr_init(&right_attr, $3, $5);
-
-		Condition condition;
-		condition_init(&condition, CONTEXT->comp, 0, NULL, left_value, 1, &right_attr, NULL);
-		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+    | expr IN LBRACE select_unit RBRACE  {
+        Condition condition;
+        expr_init_select(&CONTEXT->exprs[CONTEXT->expr_length], $4);
+        condition_init(&condition, IN_OP, $1, &CONTEXT->exprs[CONTEXT->expr_length++]);
+        CONTEXT->conditions[CONTEXT->condition_length++] = condition;
     }
-    | ID DOT ID comOp ID DOT ID {
-		RelAttr left_attr;
-		relation_attr_init(&left_attr, $1, $3);
-		RelAttr right_attr;
-		relation_attr_init(&right_attr, $5, $7);
-
-		Condition condition;
-		condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 1, &right_attr, NULL);
-		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+    | expr IN NOT LBRACE select_unit RBRACE {
+        Condition condition;
+        expr_init_select(&CONTEXT->exprs[CONTEXT->expr_length], $5);
+        condition_init(&condition, NOT_IN_OP, $1, &CONTEXT->exprs[CONTEXT->expr_length++]);
+        CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+    }
+    | EXISTS LBRACE select_unit RBRACE {
+        Condition condition;
+        expr_init_select(&CONTEXT->exprs[CONTEXT->expr_length], $3);
+        condition_init(&condition, EXISTS_OP, NULL, &CONTEXT->exprs[CONTEXT->expr_length++]);
+        CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+    }
+    | NOT EXISTS LBRACE select_unit RBRACE {
+        Condition condition;
+        expr_init_select(&CONTEXT->exprs[CONTEXT->expr_length], $4);
+        condition_init(&condition, NOT_EXISTS_OP, NULL, &CONTEXT->exprs[CONTEXT->expr_length++]);
+        CONTEXT->conditions[CONTEXT->condition_length++] = condition;
     }
 	| value null_comOp {
-		value_init_null(&CONTEXT->values[CONTEXT->value_length++]);
+        Condition condition;
+        expr_init_value(&CONTEXT->exprs[CONTEXT->expr_length++], $1);
 
-		Value *left_value = &CONTEXT->values[CONTEXT->value_length - 2];
-		Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
+        value_init_null(&CONTEXT->values[CONTEXT->value_length]);
+        Value *right_value = &CONTEXT->values[CONTEXT->value_length++];
+        expr_init_value(&CONTEXT->exprs[CONTEXT->expr_length++], right_value);
 
-		Condition condition;
-		condition_init(&condition, CONTEXT->comp, 0, NULL, left_value, 0, NULL, right_value);
-		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+        condition_init(&condition, $2, &CONTEXT->exprs[CONTEXT->expr_length - 2], &CONTEXT->exprs[CONTEXT->expr_length - 1]);
+        CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 	}
-	| ID null_comOp {
-		RelAttr left_attr;
-		relation_attr_init(&left_attr, NULL, $1);
+	| attr null_comOp {
+        Condition condition;
+        expr_init_attr(&CONTEXT->exprs[CONTEXT->expr_length++], $1);
 
-		value_init_null(&CONTEXT->values[CONTEXT->value_length++]);
-		Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
+        value_init_null(&CONTEXT->values[CONTEXT->value_length]);
+        Value *right_value = &CONTEXT->values[CONTEXT->value_length++];
+        expr_init_value(&CONTEXT->exprs[CONTEXT->expr_length++], right_value);
 
-		Condition condition;
-		condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, NULL, right_value);
-		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
-	}
-	| ID DOT ID null_comOp {
-		RelAttr left_attr;
-		relation_attr_init(&left_attr, $1, $3);
-
-		value_init_null(&CONTEXT->values[CONTEXT->value_length++]);
-		Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
-
-		Condition condition;
-		condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, NULL, right_value);
-		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+        condition_init(&condition, $2, &CONTEXT->exprs[CONTEXT->expr_length - 2], &CONTEXT->exprs[CONTEXT->expr_length - 1]);
+        CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 	}
     ;
 comOp:
-  	  EQ { CONTEXT->comp = EQUAL_TO; }
-    | LT { CONTEXT->comp = LESS_THAN; }
-    | GT { CONTEXT->comp = GREAT_THAN; }
-    | LE { CONTEXT->comp = LESS_EQUAL; }
-    | GE { CONTEXT->comp = GREAT_EQUAL; }
-    | NE { CONTEXT->comp = NOT_EQUAL; }
-    | LIKE { CONTEXT->comp = LIKE_OP; }
-    | NOT LIKE { CONTEXT->comp = NOT_LIKE_OP; }
+  	  EQ { $$ = EQUAL_TO; }
+    | LT { $$ = LESS_THAN; }
+    | GT { $$ = GREAT_THAN; }
+    | LE { $$ = LESS_EQUAL; }
+    | GE { $$ = GREAT_EQUAL; }
+    | NE { $$ = NOT_EQUAL; }
+    | LIKE { $$ = LIKE_OP; }
+    | NOT LIKE { $$ = NOT_LIKE_OP; }
     ;
 null_comOp:
-      IS NULL_TOKEN { CONTEXT->comp = IS_NULL; }
-    | IS NOT NULL_TOKEN { CONTEXT->comp = IS_NOT_NULL; }
+      IS NULL_TOKEN { $$ = IS_NULL; }
+    | IS NOT NULL_TOKEN { $$ = IS_NOT_NULL; }
     ;
 
 group_by:
     /* empty */
     | GROUP BY attr group_list having {
         selects_append_groups(&CONTEXT->selects[CONTEXT->select_length], $3);
-        free($3);
     };
 group_list:
     /* empty */
     | COMMA attr group_list {
         selects_append_groups(&CONTEXT->selects[CONTEXT->select_length], $2);
-        free($2);
     };
 having:
     /* empty */
     | HAVING aggr_attr comOp value having_list {
-        Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
-
+        expr_init_attr(&CONTEXT->exprs[CONTEXT->expr_length++], $2);
+        expr_init_value(&CONTEXT->exprs[CONTEXT->expr_length++], $4);
         Condition condition;
-        condition_init(&condition, CONTEXT->comp, 1, $2, NULL, 0, NULL, right_value);
-        free($2);
+        condition_init(&condition, $3, &CONTEXT->exprs[CONTEXT->expr_length - 2],
+                &CONTEXT->exprs[CONTEXT->expr_length - 1]);
         selects_append_having(&CONTEXT->selects[CONTEXT->select_length], &condition);
     };
 having_list:
     /* empty */
     | AND aggr_attr comOp value having_list {
-        Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
-
+        expr_init_attr(&CONTEXT->exprs[CONTEXT->expr_length++], $2);
+        expr_init_value(&CONTEXT->exprs[CONTEXT->expr_length++], $4);
         Condition condition;
-        condition_init(&condition, CONTEXT->comp, 1, $2, NULL, 0, NULL, right_value);
-        free($2);
+        condition_init(&condition, $3, &CONTEXT->exprs[CONTEXT->expr_length - 2],
+                &CONTEXT->exprs[CONTEXT->expr_length - 1]);
         selects_append_having(&CONTEXT->selects[CONTEXT->select_length], &condition);
     };
 

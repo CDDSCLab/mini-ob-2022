@@ -35,12 +35,15 @@ QUOTE            [\'\"]
 {WHITE_SAPCE}                                        // ignore whitespace
 \n                                                   ;
 
-[\-]?{DIGIT}+                                        yylval->number=atoi(yytext); RETURN_TOKEN(NUMBER);
+{DIGIT}+                                             yylval->number=atoi(yytext); RETURN_TOKEN(NUMBER);
 [\-]?{DIGIT}+{DOT}{DIGIT}+                           yylval->floats=(float)(atof(yytext)); RETURN_TOKEN(FLOAT);
 
 ";"                                                  RETURN_TOKEN(SEMICOLON);
 {DOT}                                                RETURN_TOKEN(DOT);
+"+"                                                  RETURN_TOKEN(PLUS);
+"-"                                                  RETURN_TOKEN(MINUS);
 "*"                                                  RETURN_TOKEN(STAR);
+"/"                                                  RETURN_TOKEN(DIVIDE);
 [Ee][Xx][Ii][Tt]                                     RETURN_TOKEN(EXIT);
 [Hh][Ee][Ll][Pp]                                     RETURN_TOKEN(HELP);
 [Dd][Ee][Ss][Cc]                                     RETURN_TOKEN(DESC);
@@ -58,6 +61,8 @@ QUOTE            [\'\"]
 [Ll][Ii][Kk][Ee]                                     RETURN_TOKEN(LIKE);
 [Ii][Ss]                                             RETURN_TOKEN(IS);
 [Nn][Oo][Tt]                                         RETURN_TOKEN(NOT);
+[Ii][Nn]                                             RETURN_TOKEN(IN);
+[Ee][Xx][Ii][Ss][Tt][Ss]                             RETURN_TOKEN(EXISTS);
 [Aa][Nn][Dd]                                         RETURN_TOKEN(AND);
 [Ii][Nn][Ss][Ee][rR][tT]                             RETURN_TOKEN(INSERT);
 [Ii][Nn][Tt][Oo]                                     RETURN_TOKEN(INTO);
