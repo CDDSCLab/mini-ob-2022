@@ -93,6 +93,18 @@ Value TupleCell::to_value() const
 
 int TupleCell::compare(const TupleCell &other) const
 {
+  if (this->attr_type_ == NULLS && other.attr_type_ == NULLS) {
+    return 0;
+  }
+
+  if (this->attr_type_ == NULLS) {
+    return -1;
+  }
+
+  if (other.attr_type_ == NULLS) {
+    return 1;
+  }
+
   if (this->attr_type_ == other.attr_type_) {
     switch (this->attr_type_) {
       case INTS:

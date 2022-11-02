@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.7.  */
+/* A Bison parser, made by GNU Bison 3.8.2.  */
 
 /* Bison interface for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2020 Free Software Foundation,
+   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2021 Free Software Foundation,
    Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* As a special exception, you may create a larger work that contains
    part or all of the Bison parser skeleton and distribute that work
@@ -113,13 +113,15 @@ extern int yydebug;
     NOT = 314,                     /* NOT  */
     NULL_TOKEN = 315,              /* NULL_TOKEN  */
     NULLABLE = 316,                /* NULLABLE  */
-    NUMBER = 317,                  /* NUMBER  */
-    FLOAT = 318,                   /* FLOAT  */
-    ID = 319,                      /* ID  */
-    PATH = 320,                    /* PATH  */
-    SSS = 321,                     /* SSS  */
-    STAR = 322,                    /* STAR  */
-    STRING_V = 323                 /* STRING_V  */
+    ORDER = 317,                   /* ORDER  */
+    ASC = 318,                     /* ASC  */
+    NUMBER = 319,                  /* NUMBER  */
+    FLOAT = 320,                   /* FLOAT  */
+    ID = 321,                      /* ID  */
+    PATH = 322,                    /* PATH  */
+    SSS = 323,                     /* SSS  */
+    STAR = 324,                    /* STAR  */
+    STRING_V = 325                 /* STRING_V  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -128,7 +130,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 136 "yacc_sql.y"
+#line 138 "yacc_sql.y"
 
   struct _RelAttr *_attr;
   struct _Condition *_condition;
@@ -139,7 +141,7 @@ union YYSTYPE
   float floats;
   char *position;
 
-#line 143 "yacc_sql.tab.h"
+#line 145 "yacc_sql.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -149,6 +151,8 @@ typedef union YYSTYPE YYSTYPE;
 
 
 
+
 int yyparse (void *scanner);
+
 
 #endif /* !YY_YY_YACC_SQL_TAB_H_INCLUDED  */

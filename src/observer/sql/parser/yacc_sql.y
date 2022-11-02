@@ -442,7 +442,7 @@ select:				/*  select 语句的语法解析树*/
         CONTEXT->ssql->sstr.selection = CONTEXT->selects[CONTEXT->select_length - 1];
     };
 select_unit:
-    SELECT select_attr FROM ID rel_list where group {
+    SELECT select_attr FROM ID rel_list where group_by order_by {
         selects_append_relation(&CONTEXT->selects[CONTEXT->select_length], $4);
         selects_append_conditions(&CONTEXT->selects[CONTEXT->select_length], CONTEXT->conditions, CONTEXT->condition_length);
 
@@ -660,7 +660,7 @@ null_comOp:
     | IS NOT NULL_TOKEN { CONTEXT->comp = IS_NOT_NULL; }
     ;
 
-group:
+group_by:
     /* empty */
     | GROUP BY attr group_list having {
         selects_append_groups(&CONTEXT->selects[CONTEXT->select_length], $3);
@@ -693,7 +693,7 @@ having_list:
         selects_append_having(&CONTEXT->selects[CONTEXT->select_length], &condition);
     };
 
-orderby:
+order_by:
     // empty
     | ORDER BY order order_list {
     }
