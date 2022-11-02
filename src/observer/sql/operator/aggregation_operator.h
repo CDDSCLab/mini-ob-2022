@@ -28,7 +28,7 @@ struct AggregateKey {
 
 struct AggregateValue {
   int count;
-  std::vector<int> null_counts;  // 因为先实现了不额外 count，所以该 count 仅用于 avg 计算时使用
+  std::vector<int> null_counts;
   std::vector<TupleCell> aggregates_;
 };
 
@@ -93,10 +93,6 @@ public:
           break;
       }
     }
-
-    for (auto &value : values) {
-      value.set_type(NULLS);
-    }
     return {0, null_counts, values};
   }
 
@@ -105,28 +101,8 @@ public:
     result->count += input.count;
     for (int i = 0; i < aggr_field.size(); i++) {
       if (input.aggregates_[i].attr_type() == AttrType::NULLS) {
-
         result->null_counts[i]++;
-
-        // 处理 count(null) 输出 0 和 count(date) 的特判
-        if (aggr_field[i].aggr_type() == AGGR_COUNT) {
-          if (AttrType::DATES == aggr_field[i].attr_type()) {
-            result->aggregates_[i].set_type(INTS);
-          } else {
-            result->aggregates_[i].set_type(aggr_field[i].attr_type());
-          }
-        }
         continue;
-      }
-
-      if (AttrType::DATES == aggr_field[i].attr_type()) {
-        if (AggrType::AGGR_COUNT == aggr_field[i].aggr_type()) {
-          result->aggregates_[i].set_type(INTS);
-        } else {
-          result->aggregates_[i].set_type(DATES);
-        }
-      } else {
-        result->aggregates_[i].set_type(aggr_field[i].attr_type());
       }
 
       switch (aggr_field[i].aggr_type()) {
@@ -156,10 +132,7 @@ public:
   void insert_combine(const AggregateKey &aggr_key, const AggregateValue &aggr_value)
   {
     if (hash_table_.count(aggr_key) == 0) {
-      // TODO: handle null
-      // hash_table_.insert({aggr_key, generate_initial_aggregate_value(&hash_table_[aggr_key], aggr_value)});
       hash_table_.insert({aggr_key, generate_initial_aggregate_value()});
-      // return;
     }
     combine_aggregate_values(&hash_table_[aggr_key], aggr_value);
   }

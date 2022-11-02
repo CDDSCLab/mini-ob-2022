@@ -41,12 +41,18 @@ RC AggregationOperator::next()
     return RC::RECORD_EOF;
   }
   for (int i = 0; i < aggregate_field_.size(); ++i) {
-    if (aggregate_field_[i].aggr_type() == AGGR_AVG) {
-      float data = *(float *)hash_table_iter_.Value().aggregates_[i].data();
-      if (hash_table_iter_.Value().count - hash_table_iter_.Value().null_counts[i] > 0) {
-        data /= (hash_table_iter_.Value().count - hash_table_iter_.Value().null_counts[i]);
+
+    if (hash_table_iter_.Value().count <= hash_table_iter_.Value().null_counts[i]) {
+      if (aggregate_field_[i].aggr_type() == AGGR_COUNT) {
+      } else {
+        const_cast<TupleCell *>(&(hash_table_iter_.Value().aggregates_[i]))->set_type(AttrType::NULLS);
       }
-      memcpy((void *)hash_table_iter_.Value().aggregates_[i].data(), &data, sizeof(data));
+    } else {
+      if (aggregate_field_[i].aggr_type() == AGGR_AVG) {
+        float data = *(float *)hash_table_iter_.Value().aggregates_[i].data();
+        data /= (hash_table_iter_.Value().count - hash_table_iter_.Value().null_counts[i]);
+        memcpy((void *)hash_table_iter_.Value().aggregates_[i].data(), &data, sizeof(data));
+      }
     }
   }
   tuple_.set_data(hash_table_iter_.Key().group_bys_, hash_table_iter_.Value().aggregates_);
