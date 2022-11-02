@@ -286,7 +286,7 @@ RC Table::insert_record(Trx *trx, Record *record)
   }
 
   if (trx != nullptr) {
-    rc = trx->insert_record(this, record);
+    // rc = trx->insert_record(this, record);
     if (rc != RC::SUCCESS) {
       LOG_ERROR("Failed to log operation(insertion) to trx");
 
