@@ -295,10 +295,10 @@ IndexScanOperator *try_to_create_index_scan_operator(FilterStmt *filter_stmt)
 
     Expression *left = filter_unit->left();
     Expression *right = filter_unit->right();
-    if (left->type() == ExprType::FIELD && right->type() == ExprType::VALUE) {
-    } else if (left->type() == ExprType::VALUE && right->type() == ExprType::FIELD) {
+    if (left->type() == EXPR_ATTR && right->type() == EXPR_VALUE) {
+    } else if (left->type() == EXPR_VALUE && right->type() == EXPR_ATTR) {
       std::swap(left, right);
-    } else if (left->type() == ExprType::VALUE && right->type() == ExprType::VALUE) {
+    } else if (left->type() == EXPR_VALUE && right->type() == EXPR_VALUE) {
       continue;
     }
     FieldExpr &left_field_expr = *(FieldExpr *)left;
@@ -322,7 +322,7 @@ IndexScanOperator *try_to_create_index_scan_operator(FilterStmt *filter_stmt)
   Expression *left = better_filter->left();
   Expression *right = better_filter->right();
   CompOp comp = better_filter->comp();
-  if (left->type() == ExprType::VALUE && right->type() == ExprType::FIELD) {
+  if (left->type() == EXPR_VALUE && right->type() == EXPR_ATTR) {
     std::swap(left, right);
     switch (comp) {
       case EQUAL_TO: {

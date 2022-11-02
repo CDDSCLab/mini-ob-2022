@@ -17,14 +17,9 @@ See the Mulan PSL v2 for more details. */
 #include <string.h>
 #include "storage/common/field.h"
 #include "sql/expr/tuple_cell.h"
+#include "sql/expr/tuple_cell_operator.h"
 
 class Tuple;
-
-enum class ExprType {
-  NONE,
-  FIELD,
-  VALUE,
-};
 
 class Expression {
 public:
@@ -45,7 +40,7 @@ public:
 
   ExprType type() const override
   {
-    return ExprType::FIELD;
+    return EXPR_ATTR;
   }
 
   Field &field()
@@ -89,7 +84,7 @@ public:
   RC get_value(const Tuple &tuple, TupleCell &cell) const override;
   ExprType type() const override
   {
-    return ExprType::VALUE;
+    return EXPR_VALUE;
   }
 
   void get_tuple_cell(TupleCell &cell) const
@@ -99,4 +94,60 @@ public:
 
 private:
   TupleCell tuple_cell_;
+};
+
+class ExprExpr : public Expression {
+public:
+  ExprExpr(ExprType type, Expression *left_expr, Expression *right_expr)
+      : type_(type), left_expr_(left_expr), right_expr_(right_expr)
+  {}
+
+  ExprType type() const override
+  {
+    return type_;
+  }
+
+  RC get_value(const Tuple &tuple, TupleCell &cell) const override
+  {
+    RC rc = RC::SUCCESS;
+    TupleCell left_cell;
+    TupleCell right_cell;
+    if (type_ >= EXPR_PLUS && type_ <= EXPR_DIVIDE) {
+      left_expr_->get_value(tuple, left_cell);
+      right_expr_->get_value(tuple, right_cell);
+    } else if (type_ == EXPR_NEGATIVE) {
+      left_expr_->get_value(tuple, left_cell);
+    } else {
+      return RC::GENERIC_ERROR;
+    }
+    switch (type_) {
+      case EXPR_PLUS: {
+        cell = TupleCellOperator::Plus(left_cell, right_cell);
+      } break;
+      case EXPR_MINUS: {
+        cell = TupleCellOperator::Minus(left_cell, right_cell);
+      } break;
+      case EXPR_MULTIPLY: {
+        cell = TupleCellOperator::Multiply(left_cell, right_cell);
+      } break;
+      case EXPR_DIVIDE: {
+        cell = TupleCellOperator::Divide(left_cell, right_cell);
+      } break;
+      case EXPR_NEGATIVE: {
+        cell = TupleCellOperator::Negative(left_cell, right_cell);
+      } break;
+      case EXPR_NONE:
+      case EXPR_VALUE:
+      case EXPR_ATTR:
+      case EXPR_SELECT: {
+        assert(false);
+      } break;
+    }
+    return rc;
+  }
+
+private:
+  ExprType type_;
+  Expression *left_expr_;
+  Expression *right_expr_;
 };
