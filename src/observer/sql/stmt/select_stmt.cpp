@@ -174,10 +174,44 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
 
   // collect group by field in `select` statement
   std::vector<Field> group_by_fields;
-  for (size_t i = select_sql.attr_num - 1;; i--) {
+  if (select_sql.group_num > 0) {
+    for (size_t i = select_sql.group_num - 1;; i--) {
+      const RelAttr &relation_attr = select_sql.group_attributes[i];
+      const char *table_name = relation_attr.relation_name;
+      const char *field_name = relation_attr.attribute_name;
 
-    if (i == 0) {
-      break;
+      if (relation_attr.aggr_type != AGGR_NONE) {
+        return RC::GENERIC_ERROR;
+      }
+      if (strcmp(field_name, "*") == 0) {
+        return RC::GENERIC_ERROR;
+      }
+
+      Table *table;
+      if (common::is_blank(table_name)) {
+        if (tables.size() != 1) {
+          LOG_WARN("invalid. I do not know the attr's table. attr=%s", table_name);
+          return RC::SCHEMA_FIELD_MISSING;
+        }
+        table = tables[0];
+      } else {
+        auto iter = table_map.find(table_name);
+        if (iter == table_map.end()) {
+          LOG_WARN("no such table in from list: %s", table_name);
+          return RC::SCHEMA_FIELD_MISSING;
+        }
+        table = iter->second;
+      }
+      const FieldMeta *field_meta = table->table_meta().field(field_name);
+      if (nullptr == field_meta) {
+        LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), field_name);
+        return RC::SCHEMA_FIELD_MISSING;
+      }
+      group_by_fields.emplace_back(table, field_meta, AGGR_NONE);
+
+      if (i == 0) {
+        break;
+      }
     }
   }
 
@@ -220,7 +254,8 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
   }
 
   for (const auto &field : query_fields) {
-    if (!aggr_fields.empty() && std::count(aggr_fields.begin(), aggr_fields.end(), field) == 0) {
+    if (!aggr_fields.empty() && std::count(aggr_fields.begin(), aggr_fields.end(), field) == 0 &&
+        std::count(group_by_fields.begin(), group_by_fields.end(), field) == 0) {
       // Error mixing aggregated columns with normal columns.
       return RC::GENERIC_ERROR;
     }
@@ -247,6 +282,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
   select_stmt->tables_.swap(tables);
   select_stmt->query_fields_.swap(query_fields);
   select_stmt->aggr_fields_.swap(aggr_fields);
+  select_stmt->group_by_fields_.swap(group_by_fields);
   select_stmt->order_by_fields_.swap(order_by_fields);
   select_stmt->order_by_types_.swap(order_by_types);
   select_stmt->filter_stmt_ = filter_stmt;

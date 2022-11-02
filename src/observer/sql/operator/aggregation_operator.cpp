@@ -55,7 +55,7 @@ RC AggregationOperator::next()
       }
     }
   }
-  tuple_.set_data(hash_table_iter_.Key().group_bys_, hash_table_iter_.Value().aggregates_);
+  tuple_.set_data(hash_table_iter_.Value().aggregates_, hash_table_iter_.Key().group_bys_);
   return rc;
 }
 
