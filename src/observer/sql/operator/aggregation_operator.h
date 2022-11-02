@@ -43,9 +43,16 @@ struct hash<AggregateKey> {
       len += group_by.length();
     }
     auto key = static_cast<char *>(malloc(len));
+    memset(key, 0, len);
+
     int offset = 0;
     for (const auto &group_by : aggr_key.group_bys_) {
-      memcpy(key + offset, group_by.data(), group_by.length());
+      if (AttrType::CHARS == group_by.attr_type()) {
+        int str_len = strnlen(group_by.data(), group_by.length());
+        memcpy(key + offset, group_by.data(), str_len);
+      } else {
+        memcpy(key + offset, group_by.data(), group_by.length());
+      }
       offset += group_by.length();
     }
     return MurmurHash64A(key, len, 0x1F0D3804);
