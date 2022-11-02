@@ -170,6 +170,7 @@ ParserContext *get_context(yyscan_t scanner)
 %type <_attr> aggr_attr;
 %type <_condition> condition;
 %type <_value> value;
+%type <_value> expr_value;
 %type <number> number;
 %type <number> comOp;
 %type <number> null_comOp;
@@ -177,10 +178,9 @@ ParserContext *get_context(yyscan_t scanner)
 
 %type <_select> select_unit;
 %type <_expr> expr;
-%type <_expr> expr0;
-%type <_expr> expr1;
-%type <_expr> expr2;
-%type <_expr> expr3;
+%type <_expr> add_expr;
+%type <_expr> mul_expr;
+%type <_expr> primary_expr;
 
 %%
 
@@ -397,9 +397,31 @@ value_list:
   		// CONTEXT->values[CONTEXT->value_length++] = *$2;
 	  }
     ;
+expr_value:
+      NUMBER {
+        value_init_integer(&CONTEXT->values[CONTEXT->value_length], $1);
+        $$ = &CONTEXT->values[CONTEXT->value_length++];
+        CONTEXT->every_group_count++;
+    }
+    | FLOAT {
+        value_init_float(&CONTEXT->values[CONTEXT->value_length], $1);
+        $$ = &CONTEXT->values[CONTEXT->value_length++];
+        CONTEXT->every_group_count++;
+    }
+    | SSS {
+        $1 = substr($1,1,strlen($1)-2);
+        value_init_string(&CONTEXT->values[CONTEXT->value_length], $1);
+        $$ = &CONTEXT->values[CONTEXT->value_length++];
+        CONTEXT->every_group_count++;
+    };
 value:
     NUMBER {
         value_init_integer(&CONTEXT->values[CONTEXT->value_length], $1);
+        $$ = &CONTEXT->values[CONTEXT->value_length++];
+        CONTEXT->every_group_count++;
+    }
+    | MINUS NUMBER {
+        value_init_integer(&CONTEXT->values[CONTEXT->value_length], -$2);
         $$ = &CONTEXT->values[CONTEXT->value_length++];
         CONTEXT->every_group_count++;
     }
@@ -484,48 +506,43 @@ select_attr_list:
         selects_append_expr(&CONTEXT->selects[CONTEXT->select_length], $2);
     };
 expr:
-    expr0 {
+    add_expr {
         $$ = $1;
     }
     | LBRACE select_unit RBRACE {
         expr_init_select(&CONTEXT->exprs[CONTEXT->expr_length], $2);
         $$ = &CONTEXT->exprs[CONTEXT->expr_length++];
     };
-expr0:
-    expr PLUS expr1 {
+add_expr:
+    add_expr PLUS mul_expr {
         expr_init_expr(&CONTEXT->exprs[CONTEXT->expr_length], EXPR_PLUS, $1, $3);
         $$ = &CONTEXT->exprs[CONTEXT->expr_length++];
     }
-    | expr MINUS expr1 {
+    | add_expr MINUS mul_expr {
         expr_init_expr(&CONTEXT->exprs[CONTEXT->expr_length], EXPR_MINUS, $1, $3);
         $$ = &CONTEXT->exprs[CONTEXT->expr_length++];
     }
-    | expr1 {
+    | mul_expr {
         $$ = $1;
     };
-expr1:
-    expr1 STAR expr2 {
+mul_expr:
+    mul_expr STAR primary_expr {
         expr_init_expr(&CONTEXT->exprs[CONTEXT->expr_length], EXPR_MULTIPLY, $1, $3);
         $$ = &CONTEXT->exprs[CONTEXT->expr_length++];
     }
-    | expr1 DIVIDE expr2 {
+    | mul_expr DIVIDE primary_expr {
         expr_init_expr(&CONTEXT->exprs[CONTEXT->expr_length], EXPR_DIVIDE, $1, $3);
         $$ = &CONTEXT->exprs[CONTEXT->expr_length++];
     }
-    | expr2 {
-        $$ = $1;
-    };
-expr2:
-    MINUS expr3 {
+    | MINUS primary_expr {
         expr_init_expr(&CONTEXT->exprs[CONTEXT->expr_length], EXPR_NEGATIVE, $2, NULL);
         $$ = &CONTEXT->exprs[CONTEXT->expr_length++];
     }
-    |
-    expr3 {
+    | primary_expr {
         $$ = $1;
     };
-expr3:
-    LBRACE expr0 RBRACE {
+primary_expr:
+    LBRACE add_expr RBRACE {
         $$ = $2;
     }
     | attr {
@@ -536,7 +553,7 @@ expr3:
         expr_init_attr(&CONTEXT->exprs[CONTEXT->expr_length], $1);
         $$ = &CONTEXT->exprs[CONTEXT->expr_length++];
     }
-    | value {
+    | expr_value {
         expr_init_value(&CONTEXT->exprs[CONTEXT->expr_length], $1);
         $$ = &CONTEXT->exprs[CONTEXT->expr_length++];
     };

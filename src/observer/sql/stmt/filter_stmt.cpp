@@ -104,6 +104,10 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
     Table *table = nullptr;
     const FieldMeta *field = nullptr;
     rc = get_table_and_field(db, default_table, tables, left_expr->attr, table, field);
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("cannot find attr");
+      return rc;
+    }
     if (field->type() == DATES && right_expr->value.type == CHARS) {
       int date;
       rc = char2date((const char *)right_expr->value.data, &date);
@@ -113,10 +117,14 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
       right_expr->value.type = DATES;
       memcpy(right_expr->value.data, &date, sizeof(date));
     }
-  } else if (condition.left_expr.expr_type == EXPR_VALUE && condition.right_expr.expr_type == EXPR_ATTR) {
+  } else if (left_expr->expr_type == EXPR_VALUE && right_expr->expr_type == EXPR_ATTR) {
     Table *table = nullptr;
     const FieldMeta *field = nullptr;
     rc = get_table_and_field(db, default_table, tables, right_expr->attr, table, field);
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("cannot find attr");
+      return rc;
+    }
     if (field->type() == DATES && left_expr->value.type == CHARS) {
       int date;
       rc = char2date((const char *)left_expr->value.data, &date);
