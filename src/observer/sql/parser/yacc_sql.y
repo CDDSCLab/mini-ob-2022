@@ -398,6 +398,7 @@ value:
     }
     | NULL_TOKEN {
         value_init_null(&CONTEXT->values[CONTEXT->value_length++]);
+        $$ = &CONTEXT->values[CONTEXT->value_length - 1];
         CONTEXT->every_group_count++;
     };
     
