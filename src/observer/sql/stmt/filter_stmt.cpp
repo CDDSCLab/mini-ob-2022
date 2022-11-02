@@ -98,9 +98,13 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
 
   Expression *left = nullptr;
   Expression *right = nullptr;
+  AttrType left_type = UNDEFINED;
+  AttrType right_type = UNDEFINED;
   auto left_expr = &const_cast<Condition &>(condition).left_expr;
   auto right_expr = &const_cast<Condition &>(condition).right_expr;
-  if (left_expr->expr_type == EXPR_ATTR && right_expr->expr_type == EXPR_VALUE) {
+
+  // Check if field exists.
+  if (left_expr->expr_type == EXPR_ATTR) {
     Table *table = nullptr;
     const FieldMeta *field = nullptr;
     rc = get_table_and_field(db, default_table, tables, left_expr->attr, table, field);
@@ -108,7 +112,22 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
       LOG_WARN("cannot find attr");
       return rc;
     }
-    if (field->type() == DATES && right_expr->value.type == CHARS) {
+    left_type = field->type();
+  }
+  if (right_expr->expr_type == EXPR_ATTR) {
+    Table *table = nullptr;
+    const FieldMeta *field = nullptr;
+    rc = get_table_and_field(db, default_table, tables, right_expr->attr, table, field);
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("cannot find attr");
+      return rc;
+    }
+    right_type = field->type();
+  }
+
+  // Try to typecast.
+  if (left_expr->expr_type == EXPR_ATTR && right_expr->expr_type == EXPR_VALUE) {
+    if (left_type == DATES && right_expr->value.type == CHARS) {
       int date;
       rc = char2date((const char *)right_expr->value.data, &date);
       if (rc != RC::SUCCESS) {
@@ -118,14 +137,7 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
       memcpy(right_expr->value.data, &date, sizeof(date));
     }
   } else if (left_expr->expr_type == EXPR_VALUE && right_expr->expr_type == EXPR_ATTR) {
-    Table *table = nullptr;
-    const FieldMeta *field = nullptr;
-    rc = get_table_and_field(db, default_table, tables, right_expr->attr, table, field);
-    if (rc != RC::SUCCESS) {
-      LOG_WARN("cannot find attr");
-      return rc;
-    }
-    if (field->type() == DATES && left_expr->value.type == CHARS) {
+    if (left_expr->value.type == CHARS && right_type == DATES) {
       int date;
       rc = char2date((const char *)left_expr->value.data, &date);
       if (rc != RC::SUCCESS) {
