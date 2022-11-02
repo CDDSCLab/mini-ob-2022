@@ -490,7 +490,7 @@ RC Table::update_record(
     // 处理更新时的类型问题
     if (value_type == NULLS || value->is_null) {
       if (!field->nullable()) {
-        return RC::GENERIC_ERROR;
+        return RC::CONSTRAINT_NOTNULL;
       }
       *((char *)(record->data() + field->offset()) + field->len() - 1) = (char)true;
     } else if (field_type != value_type) {
@@ -878,7 +878,14 @@ RC Table::update_record(
     return rc;
   }
 
-  update_record(record, update_fields, values);
+  rc = update_record(record, update_fields, values);
+
+  if (rc != RC::SUCCESS) {
+    LOG_INFO(
+        "Failed to update record (rid=%d.%d). rc=%d:%s", record->rid().page_num, record->rid().slot_num, rc, strrc(rc));
+    return rc;
+  }
+
   rc = record_handler_->update_record(record);
   if (rc != RC::SUCCESS) {
     LOG_ERROR(
