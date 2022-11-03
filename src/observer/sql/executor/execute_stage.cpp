@@ -510,6 +510,7 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   DEFER([&]() { delete scan_oper; });
 
   PredicateOperator pred_oper(select_stmt->filter_stmt());
+  PredicateOperator having_pred_oper(select_stmt->having_stmt());
   pred_oper.add_child(scan_oper);
   AggregationOperator aggr_oper(select_stmt->aggr_fields(), select_stmt->group_by_fields());
   ProjectOperator project_oper;
@@ -519,8 +520,14 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   if (select_stmt->aggr_fields().empty()) {
     project_oper.add_child(&pred_oper);
   } else {
-    aggr_oper.add_child(&pred_oper);
-    project_oper.add_child(&aggr_oper);
+    if (select_stmt->having_stmt() != nullptr) {
+      aggr_oper.add_child(&pred_oper);
+      having_pred_oper.add_child(&aggr_oper);
+      project_oper.add_child(&having_pred_oper);
+    } else {
+      aggr_oper.add_child(&pred_oper);
+      project_oper.add_child(&aggr_oper);
+    }
   }
 
   rc = project_oper.open();

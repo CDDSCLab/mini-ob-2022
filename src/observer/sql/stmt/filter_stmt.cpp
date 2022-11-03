@@ -68,7 +68,13 @@ RC get_table_and_field(Db *db, Table *default_table, std::unordered_map<std::str
     return RC::SCHEMA_TABLE_NOT_EXIST;
   }
 
-  field = table->table_meta().field(attr.attribute_name);
+  if (0 == strcmp(attr.attribute_name, "*")) {
+    if (AggrType::AGGR_COUNT == attr.aggr_type) {
+      field = table->table_meta().field(0);
+    }
+  } else {
+    field = table->table_meta().field(attr.attribute_name);
+  }
   if (nullptr == field) {
     LOG_WARN("no such field in table: table %s, field %s", table->name(), attr.attribute_name);
     table = nullptr;

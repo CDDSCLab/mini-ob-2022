@@ -277,6 +277,205 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
     return rc;
   }
 
+  // creat filter statement in 'having' statement
+  FilterStmt *having_stmt = nullptr;
+  if (select_sql.having_num > 0) {
+    // 组织 having aggr filed 和 having filter
+    rc = FilterStmt::create(db, default_table, &table_map, select_sql.having, select_sql.having_num, having_stmt);
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("cannot construct filter stmt");
+      return rc;
+    }
+
+    // add aggr in having. having 里的 feild 必须是聚合
+    for (size_t i = select_sql.having_num - 1;; i--) {
+      const Condition &condition = select_sql.having[i];
+
+      if (condition.left_is_attr) {
+        const RelAttr &relation_attr = condition.left_attr;
+        auto aggr_type = relation_attr.aggr_type;
+        if (common::is_blank(relation_attr.relation_name) && 0 == strcmp(relation_attr.attribute_name, "*")) {
+          if (aggr_type != AGGR_NONE) {
+            const auto table = tables[0];
+            const auto field_meta = table->table_meta().field(0);
+            aggr_fields.emplace_back(table, field_meta, aggr_type);
+          } else {
+            // for (Table *table : tables) {
+            //   wildcard_fields(table, query_fields);
+            // }
+            LOG_ERROR("use non-aggr field in having");
+            return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+          }
+        } else if (!common::is_blank(relation_attr.relation_name)) {  // TODO
+          const char *table_name = relation_attr.relation_name;
+          const char *field_name = relation_attr.attribute_name;
+
+          if (0 == strcmp(table_name, "*")) {
+            if (0 != strcmp(field_name, "*")) {
+              LOG_WARN("invalid field name while table is *. attr=%s", field_name);
+              return RC::SCHEMA_FIELD_MISSING;
+            }
+            if (aggr_type != AGGR_NONE) {
+              const auto table = tables[0];
+              const auto field_meta = table->table_meta().field(0);
+              aggr_fields.emplace_back(table, field_meta, aggr_type);
+            } else {
+              // for (Table *table : tables) {
+              //   wildcard_fields(table, query_fields);
+              // }
+              LOG_ERROR("use non-aggr field in having");
+              return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+            }
+          } else {
+            auto iter = table_map.find(table_name);
+            if (iter == table_map.end()) {
+              LOG_WARN("no such table in from list: %s", table_name);
+              return RC::SCHEMA_FIELD_MISSING;
+            }
+
+            Table *table = iter->second;
+            if (0 == strcmp(field_name, "*")) {
+              if (aggr_type != AGGR_NONE) {
+                const auto field_meta = table->table_meta().field(0);
+                aggr_fields.emplace_back(table, field_meta, aggr_type);
+              } else {
+                // wildcard_fields(table, query_fields);
+                LOG_ERROR("use non-aggr field in having");
+                return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+              }
+            } else {
+              const FieldMeta *field_meta = table->table_meta().field(field_name);
+              if (nullptr == field_meta) {
+                LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), field_name);
+                return RC::SCHEMA_FIELD_MISSING;
+              }
+
+              if (aggr_type != AGGR_NONE) {
+                aggr_fields.emplace_back(table, field_meta, aggr_type);
+              } else {
+                LOG_ERROR("use non-aggr field in having");
+                return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+              }
+            }
+          }
+        } else {
+          if (tables.size() != 1) {
+            LOG_WARN("invalid. I do not know the attr's table. attr=%s", relation_attr.attribute_name);
+            return RC::SCHEMA_FIELD_MISSING;
+          }
+
+          Table *table = tables[0];
+          const FieldMeta *field_meta = table->table_meta().field(relation_attr.attribute_name);
+          if (nullptr == field_meta) {
+            LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), relation_attr.attribute_name);
+            return RC::SCHEMA_FIELD_MISSING;
+          }
+
+          if (aggr_type != AGGR_NONE) {
+            aggr_fields.emplace_back(table, field_meta, aggr_type);
+          } else {
+            LOG_ERROR("use non-aggr field in having");
+            return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+          }
+        }
+      }
+
+      if (condition.right_is_attr) {
+        const RelAttr &relation_attr = condition.right_attr;
+        auto aggr_type = relation_attr.aggr_type;
+        if (common::is_blank(relation_attr.relation_name) && 0 == strcmp(relation_attr.attribute_name, "*")) {
+          if (aggr_type != AGGR_NONE) {
+            const auto table = tables[0];
+            const auto field_meta = table->table_meta().field(0);
+            aggr_fields.emplace_back(table, field_meta, aggr_type);
+          } else {
+            // for (Table *table : tables) {
+            //   wildcard_fields(table, query_fields);
+            // }
+            LOG_ERROR("use non-aggr field in having");
+            return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+          }
+        } else if (!common::is_blank(relation_attr.relation_name)) {  // TODO
+          const char *table_name = relation_attr.relation_name;
+          const char *field_name = relation_attr.attribute_name;
+
+          if (0 == strcmp(table_name, "*")) {
+            if (0 != strcmp(field_name, "*")) {
+              LOG_WARN("invalid field name while table is *. attr=%s", field_name);
+              return RC::SCHEMA_FIELD_MISSING;
+            }
+            if (aggr_type != AGGR_NONE) {
+              const auto table = tables[0];
+              const auto field_meta = table->table_meta().field(0);
+              aggr_fields.emplace_back(table, field_meta, aggr_type);
+            } else {
+              // for (Table *table : tables) {
+              //   wildcard_fields(table, query_fields);
+              // }
+              LOG_ERROR("use non-aggr field in having");
+              return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+            }
+          } else {
+            auto iter = table_map.find(table_name);
+            if (iter == table_map.end()) {
+              LOG_WARN("no such table in from list: %s", table_name);
+              return RC::SCHEMA_FIELD_MISSING;
+            }
+
+            Table *table = iter->second;
+            if (0 == strcmp(field_name, "*")) {
+              if (aggr_type != AGGR_NONE) {
+                const auto field_meta = table->table_meta().field(0);
+                aggr_fields.emplace_back(table, field_meta, aggr_type);
+              } else {
+                // wildcard_fields(table, query_fields);
+                LOG_ERROR("use non-aggr field in having");
+                return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+              }
+            } else {
+              const FieldMeta *field_meta = table->table_meta().field(field_name);
+              if (nullptr == field_meta) {
+                LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), field_name);
+                return RC::SCHEMA_FIELD_MISSING;
+              }
+
+              if (aggr_type != AGGR_NONE) {
+                aggr_fields.emplace_back(table, field_meta, aggr_type);
+              } else {
+                LOG_ERROR("use non-aggr field in having");
+                return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+              }
+            }
+          }
+        } else {
+          if (tables.size() != 1) {
+            LOG_WARN("invalid. I do not know the attr's table. attr=%s", relation_attr.attribute_name);
+            return RC::SCHEMA_FIELD_MISSING;
+          }
+
+          Table *table = tables[0];
+          const FieldMeta *field_meta = table->table_meta().field(relation_attr.attribute_name);
+          if (nullptr == field_meta) {
+            LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), relation_attr.attribute_name);
+            return RC::SCHEMA_FIELD_MISSING;
+          }
+
+          if (aggr_type != AGGR_NONE) {
+            aggr_fields.emplace_back(table, field_meta, aggr_type);
+          } else {
+            LOG_ERROR("use non-aggr field in having");
+            return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+          }
+        }
+      }
+
+      if (i == 0) {
+        break;
+      }
+    }
+  }
+  // TODO: having 前提语法检查
+
   // everything alright
   auto select_stmt = new SelectStmt();
   select_stmt->tables_.swap(tables);
@@ -286,6 +485,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
   select_stmt->order_by_fields_.swap(order_by_fields);
   select_stmt->order_by_types_.swap(order_by_types);
   select_stmt->filter_stmt_ = filter_stmt;
+  select_stmt->having_stmt_ = having_stmt;
   stmt = select_stmt;
   return RC::SUCCESS;
 }

@@ -67,6 +67,10 @@ public:
   {
     return filter_stmt_;
   }
+  FilterStmt *having_stmt() const
+  {
+    return having_stmt_;
+  }
 
 private:
   std::vector<Field> query_fields_;
@@ -76,4 +80,5 @@ private:
   std::vector<Field> order_by_fields_;
   std::vector<OrderType> order_by_types_;
   FilterStmt *filter_stmt_ = nullptr;
+  FilterStmt *having_stmt_ = nullptr;
 };
