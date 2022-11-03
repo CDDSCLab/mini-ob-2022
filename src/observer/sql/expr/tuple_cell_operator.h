@@ -100,6 +100,35 @@ public:
     assert(false);
   }
 
+  static inline TupleCell Length(const TupleCell &cell)
+  {
+    if (cell.attr_type() != CHARS) {
+      return {UNDEFINED, nullptr};
+    }
+    int result = cell.length();
+    Value value;
+    value_init_integer(&value, result);
+    return {INTS, static_cast<char *>(value.data)};
+  }
+
+  static inline TupleCell Round(const TupleCell &cell)
+  {
+    if (cell.attr_type() != FLOATS) {
+      return {UNDEFINED, nullptr};
+    }
+    int result = TupleCellToFloat(cell) + 0.5;
+    Value value;
+    value_init_integer(&value, result);
+    return {INTS, static_cast<char *>(value.data)};
+  }
+
+  static inline TupleCell DateFormat(const TupleCell &cell)
+  {
+    Value value;
+    value_init_string(&value, "result");
+    return {CHARS, static_cast<char *>(value.data)};
+  }
+
   static inline int TupleCellToInt(const TupleCell &cell)
   {
     if (cell.attr_type() != INTS) {

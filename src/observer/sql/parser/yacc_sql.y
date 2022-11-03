@@ -111,6 +111,9 @@ ParserContext *get_context(yyscan_t scanner)
         GROUP
         BY
         HAVING
+        LENGTH
+        ROUND
+        DATE_FORMAT
         HELP
         EXIT
         DOT // QUOTE
@@ -169,6 +172,8 @@ ParserContext *get_context(yyscan_t scanner)
 
 %type <number> type;
 %type <number> aggr_type;
+%type <number> func_type_1;
+%type <number> func_type_2;
 %type <_attr> attr;
 %type <_attr> aggr_attr;
 %type <_condition> condition;
@@ -184,6 +189,7 @@ ParserContext *get_context(yyscan_t scanner)
 %type <_expr> add_expr;
 %type <_expr> mul_expr;
 %type <_expr> primary_expr;
+%type <_expr> func_attr;
 %type <string> alias;
 
 %%
@@ -490,7 +496,24 @@ select:				/*  select 语句的语法解析树*/
         CONTEXT->ssql->sstr.selection = CONTEXT->selects[1];
     };
 select_unit:
-    select_begin select_attr FROM ID alias rel_list where group_by order_by {
+    select_begin func_attr alias {
+        selects_append_expr(&CONTEXT->selects[CONTEXT->select_length], $2, $3);
+
+        // 临时变量清零
+        CONTEXT->condition_length[CONTEXT->select_length] = 0;
+        CONTEXT->value_length = 0;
+        $$ = &CONTEXT->selects[CONTEXT->select_length--];
+    }
+    | select_begin func_attr alias FROM ID{
+        selects_append_expr(&CONTEXT->selects[CONTEXT->select_length], $2, $3);
+        selects_append_relation(&CONTEXT->selects[CONTEXT->select_length], $5, NULL);
+
+        // 临时变量清零
+        CONTEXT->condition_length[CONTEXT->select_length] = 0;
+        CONTEXT->value_length = 0;
+        $$ = &CONTEXT->selects[CONTEXT->select_length--];
+    }
+    | select_begin select_attr FROM ID alias rel_list where group_by order_by {
         selects_append_relation(&CONTEXT->selects[CONTEXT->select_length], $4, $5);
         selects_append_conditions(&CONTEXT->selects[CONTEXT->select_length],
                 CONTEXT->conditions[CONTEXT->select_length], CONTEXT->condition_length[CONTEXT->select_length]);
@@ -499,6 +522,23 @@ select_unit:
         CONTEXT->value_length = 0;
         $$ = &CONTEXT->selects[CONTEXT->select_length--];
     };
+
+func_attr:
+	  func_type_1 LBRACE primary_expr RBRACE {
+		expr_init_expr(&CONTEXT->exprs[CONTEXT->expr_length], $1, $3, NULL);
+		$$ = &CONTEXT->exprs[CONTEXT->expr_length++];
+	}
+    | func_type_2 LBRACE primary_expr COMMA primary_expr RBRACE {
+		expr_init_expr(&CONTEXT->exprs[CONTEXT->expr_length], $1, $3, $5);
+		$$ = &CONTEXT->exprs[CONTEXT->expr_length++];
+	}
+    ;
+func_type_1:
+	   LENGTH { $$ = EXPR_LENGTH; };
+func_type_2:
+	   ROUND { $$ = EXPR_ROUND; }
+	 | DATE_FORMAT { $$ = EXPR_DATE_FORMAT; }
+	 ;
 
 alias:
     // empty
@@ -582,7 +622,8 @@ primary_expr:
     | expr_value {
         expr_init_value(&CONTEXT->exprs[CONTEXT->expr_length], $1);
         $$ = &CONTEXT->exprs[CONTEXT->expr_length++];
-    };
+    }
+    ;
 
 attr:
     ID {

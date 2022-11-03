@@ -71,6 +71,9 @@ typedef enum {
   EXPR_NEGATIVE,
   EXPR_VALUE,
   EXPR_ATTR,
+  EXPR_LENGTH,
+  EXPR_ROUND,
+  EXPR_DATE_FORMAT,
   EXPR_SELECT,
 } ExprType;
 
