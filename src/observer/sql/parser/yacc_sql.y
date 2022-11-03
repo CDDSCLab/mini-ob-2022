@@ -657,22 +657,22 @@ condition:
     }
     | expr IN LBRACE select_unit RBRACE  {
         expr_init_select(&CONTEXT->exprs[CONTEXT->expr_length], $4);
-        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]],
+        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
                 IN_OP, $1, &CONTEXT->exprs[CONTEXT->expr_length++]);
     }
     | expr NOT IN LBRACE select_unit RBRACE {
         expr_init_select(&CONTEXT->exprs[CONTEXT->expr_length], $5);
-        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]],
+        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
                 NOT_IN_OP, $1, &CONTEXT->exprs[CONTEXT->expr_length++]);
     }
     | EXISTS LBRACE select_unit RBRACE {
         expr_init_select(&CONTEXT->exprs[CONTEXT->expr_length], $3);
-        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]],
+        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
                 EXISTS_OP, NULL, &CONTEXT->exprs[CONTEXT->expr_length++]);
     }
     | NOT EXISTS LBRACE select_unit RBRACE {
         expr_init_select(&CONTEXT->exprs[CONTEXT->expr_length], $4);
-        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]],
+        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
                 NOT_EXISTS_OP, NULL, &CONTEXT->exprs[CONTEXT->expr_length++]);
     }
 	| value null_comOp {
@@ -682,7 +682,7 @@ condition:
         Value *right_value = &CONTEXT->values[CONTEXT->value_length++];
         expr_init_value(&CONTEXT->exprs[CONTEXT->expr_length++], right_value);
 
-        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]],
+        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
                 $2, &CONTEXT->exprs[CONTEXT->expr_length - 2], &CONTEXT->exprs[CONTEXT->expr_length - 1]);
 	}
 	| attr null_comOp {
@@ -692,7 +692,7 @@ condition:
         Value *right_value = &CONTEXT->values[CONTEXT->value_length++];
         expr_init_value(&CONTEXT->exprs[CONTEXT->expr_length++], right_value);
 
-        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]],
+        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
                 $2, &CONTEXT->exprs[CONTEXT->expr_length - 2], &CONTEXT->exprs[CONTEXT->expr_length - 1]);
 	}
     ;

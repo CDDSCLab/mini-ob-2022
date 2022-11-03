@@ -137,8 +137,10 @@ RC PredicateOperator::do_predicate(RowTuple &tuple, bool *result)
       switch (comp) {
         case IS_NULL:
           filter_result = left_cell.attr_type() == NULLS;
+          break;
         case IS_NOT_NULL:
           filter_result = left_cell.attr_type() != NULLS;
+          break;
         default:
           *result = false;
           return rc;
