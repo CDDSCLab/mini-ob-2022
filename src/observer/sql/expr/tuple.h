@@ -92,7 +92,7 @@ public:
     table_ = table;
     this->speces_.reserve(fields->size());
     for (const FieldMeta &field : *fields) {
-      speces_.push_back(new TupleCellSpec(new FieldExpr(table, &field)));
+      speces_.push_back(new TupleCellSpec(new FieldExpr(table, &field, AggrType::AGGR_NONE)));
     }
   }
 

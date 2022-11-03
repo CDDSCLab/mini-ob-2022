@@ -107,7 +107,7 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
       LOG_WARN("cannot find attr");
       return rc;
     }
-    left = new FieldExpr(table, field);
+    left = new FieldExpr(table, field, condition.left_attr.aggr_type);
     left_type = field->type();
     if (!condition.right_is_attr) {
       if (field->type() == DATES && condition.right_value.type == CHARS) {
@@ -133,7 +133,7 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
       delete left;
       return rc;
     }
-    right = new FieldExpr(table, field);
+    right = new FieldExpr(table, field, condition.right_attr.aggr_type);
     right_type = field->type();
     if (!condition.left_is_attr) {
       if (field->type() == DATES && condition.left_value.type == CHARS) {
