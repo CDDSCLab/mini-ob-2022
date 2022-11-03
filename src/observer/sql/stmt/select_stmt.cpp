@@ -40,6 +40,20 @@ static void wildcard_fields(Table *table, std::vector<Field> &field_metas)
   }
 }
 
+static void wildcard_expr(
+    Table *table, std::vector<Expression *> &exprs, Db *db, std::unordered_map<std::string, Table *> table_map)
+{
+  const TableMeta &table_meta = table->table_meta();
+  const int field_num = table_meta.field_num();
+  for (int i = table_meta.sys_field_num(); i < field_num; i++) {
+    Expr tmp;
+    tmp.expr_type = EXPR_ATTR;
+    tmp.attr.relation_name = const_cast<char *>(table->name());
+    tmp.attr.attribute_name = const_cast<char *>(table_meta.field(i)->name());
+    exprs.emplace_back(ExpressionFactory::NewExpression(tmp, db, table, &table_map));
+  }
+}
+
 RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
 {
   if (nullptr == db) {
@@ -181,7 +195,23 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
 
   std::vector<Expression *> express;
   for (size_t i = select_sql.expr_num - 1;; i--) {
-    express.emplace_back(ExpressionFactory::NewExpression(select_sql.exprs[i], db, tables[0], &table_map));
+    if (select_sql.exprs[i].expr_type == EXPR_ATTR) {
+      if (common::is_blank(select_sql.exprs[i].attr.relation_name) &&
+          0 == strcmp(select_sql.exprs[i].attr.attribute_name, "*")) {  //*
+        for (Table *table : tables) {
+          wildcard_expr(table, express, db, table_map);
+        }
+      } else if ((!common::is_blank(select_sql.exprs[i].attr.relation_name)) &&
+                 0 == strcmp(select_sql.exprs[i].attr.attribute_name, "*")) {  // t.*
+        auto table = table_map[select_sql.exprs[i].attr.relation_name];
+        // TODO: check relation_name
+        wildcard_expr(table, express, db, table_map);
+      } else {
+        express.emplace_back(ExpressionFactory::NewExpression(select_sql.exprs[i], db, tables[0], &table_map));
+      }
+    } else {
+      express.emplace_back(ExpressionFactory::NewExpression(select_sql.exprs[i], db, tables[0], &table_map));
+    }
     if (i == 0) {
       break;
     }
