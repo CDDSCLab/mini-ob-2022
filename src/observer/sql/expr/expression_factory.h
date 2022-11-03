@@ -32,7 +32,7 @@ public:
         Table *table = nullptr;
         const FieldMeta *field = nullptr;
         get_table_and_field(db, default_table, tables, expr.attr, table, field);
-        return new FieldExpr(table, field);
+        return new FieldExpr(table, field, expr.attr.aggr_type);
       }
       case EXPR_SELECT: {
         // TODO

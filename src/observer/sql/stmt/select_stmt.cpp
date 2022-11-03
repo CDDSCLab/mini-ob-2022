@@ -198,14 +198,22 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
     if (select_sql.exprs[i].expr_type == EXPR_ATTR) {
       if (common::is_blank(select_sql.exprs[i].attr.relation_name) &&
           0 == strcmp(select_sql.exprs[i].attr.attribute_name, "*")) {  //*
-        for (Table *table : tables) {
-          wildcard_expr(table, express, db, table_map);
+        if (select_sql.exprs[i].attr.aggr_type == AGGR_COUNT) {
+          express.emplace_back(new FieldExpr(tables[0], tables[0]->table_meta().field(0), AGGR_COUNT));
+        } else {
+          for (Table *table : tables) {
+            wildcard_expr(table, express, db, table_map);
+          }
         }
       } else if ((!common::is_blank(select_sql.exprs[i].attr.relation_name)) &&
                  0 == strcmp(select_sql.exprs[i].attr.attribute_name, "*")) {  // t.*
         auto table = table_map[select_sql.exprs[i].attr.relation_name];
         // TODO: check relation_name
-        wildcard_expr(table, express, db, table_map);
+        if (select_sql.exprs[i].attr.aggr_type == AGGR_COUNT) {
+          express.emplace_back(new FieldExpr(table, table->table_meta().field(0), AGGR_COUNT));
+        } else {
+          wildcard_expr(table, express, db, table_map);
+        }
       } else {
         express.emplace_back(ExpressionFactory::NewExpression(select_sql.exprs[i], db, tables[0], &table_map));
       }
