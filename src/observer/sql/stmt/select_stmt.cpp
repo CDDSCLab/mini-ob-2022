@@ -344,8 +344,8 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
     for (size_t i = select_sql.having_num - 1;; i--) {
       const Condition &condition = select_sql.having[i];
 
-      if (condition.left_is_attr) {
-        const RelAttr &relation_attr = condition.left_attr;
+      if (condition.left_expr.expr_type == EXPR_ATTR) {
+        const RelAttr &relation_attr = condition.left_expr.attr;
         auto aggr_type = relation_attr.aggr_type;
         if (common::is_blank(relation_attr.relation_name) && 0 == strcmp(relation_attr.attribute_name, "*")) {
           if (aggr_type != AGGR_NONE) {
@@ -433,8 +433,8 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
         }
       }
 
-      if (condition.right_is_attr) {
-        const RelAttr &relation_attr = condition.right_attr;
+      if (condition.right_expr.expr_type == EXPR_ATTR) {
+        const RelAttr &relation_attr = condition.right_expr.attr;
         auto aggr_type = relation_attr.aggr_type;
         if (common::is_blank(relation_attr.relation_name) && 0 == strcmp(relation_attr.attribute_name, "*")) {
           if (aggr_type != AGGR_NONE) {
