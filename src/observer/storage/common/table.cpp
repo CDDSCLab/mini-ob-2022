@@ -411,6 +411,16 @@ const char *Table::name() const
   return table_meta_.name();
 }
 
+const char *Table::alias() const
+{
+  return alias_;
+}
+
+void Table::set_alias(const char *alias)
+{
+  this->alias_ = alias;
+}
+
 const TableMeta &Table::table_meta() const
 {
   return table_meta_;

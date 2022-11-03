@@ -40,8 +40,8 @@ static void wildcard_fields(Table *table, std::vector<Field> &field_metas)
   }
 }
 
-static void wildcard_expr(
-    Table *table, std::vector<Expression *> &exprs, Db *db, std::unordered_map<std::string, Table *> table_map)
+static void wildcard_expr(Table *table, std::vector<Expression *> &exprs, Db *db,
+    std::unordered_map<std::string, Table *> table_map, std::vector<char *> &select_expr_alias)
 {
   const TableMeta &table_meta = table->table_meta();
   const int field_num = table_meta.field_num();
@@ -51,6 +51,7 @@ static void wildcard_expr(
     tmp.attr.relation_name = const_cast<char *>(table->name());
     tmp.attr.attribute_name = const_cast<char *>(table_meta.field(i)->name());
     exprs.emplace_back(ExpressionFactory::NewExpression(tmp, db, table, &table_map));
+    select_expr_alias.emplace_back(nullptr);
   }
 }
 
@@ -66,6 +67,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
   std::unordered_map<std::string, Table *> table_map;
   for (size_t i = select_sql.relation_num - 1;; --i) {
     const char *table_name = select_sql.relations[i];
+    const char *table_alias = select_sql.relation_alias[i];
     if (nullptr == table_name) {
       LOG_WARN("invalid argument. relation name is null. index=%d", i);
       return RC::INVALID_ARGUMENT;
@@ -77,8 +79,12 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
       return RC::SCHEMA_TABLE_NOT_EXIST;
     }
 
+    table->set_alias(table_alias);
     tables.push_back(table);
     table_map.insert(std::pair<std::string, Table *>(table_name, table));
+    if (table_alias != NULL) {
+      table_map.insert(std::pair<std::string, Table *>(table_alias, table));
+    }
     if (i == 0) {
       break;
     }
@@ -194,15 +200,17 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
   }
 
   std::vector<Expression *> express;
+  std::vector<char *> select_expr_alias;  // select_expr_alias给单表用的
   for (size_t i = select_sql.expr_num - 1;; i--) {
     if (select_sql.exprs[i].expr_type == EXPR_ATTR) {
       if (common::is_blank(select_sql.exprs[i].attr.relation_name) &&
           0 == strcmp(select_sql.exprs[i].attr.attribute_name, "*")) {  //*
         if (select_sql.exprs[i].attr.aggr_type == AGGR_COUNT) {
           express.emplace_back(new FieldExpr(tables[0], tables[0]->table_meta().field(0), AGGR_COUNT));
+          select_expr_alias.emplace_back(select_sql.select_expr_alias[i]);
         } else {
           for (Table *table : tables) {
-            wildcard_expr(table, express, db, table_map);
+            wildcard_expr(table, express, db, table_map, select_expr_alias);
           }
         }
       } else if ((!common::is_blank(select_sql.exprs[i].attr.relation_name)) &&
@@ -211,14 +219,17 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
         // TODO: check relation_name
         if (select_sql.exprs[i].attr.aggr_type == AGGR_COUNT) {
           express.emplace_back(new FieldExpr(table, table->table_meta().field(0), AGGR_COUNT));
+          select_expr_alias.emplace_back(select_sql.select_expr_alias[i]);
         } else {
-          wildcard_expr(table, express, db, table_map);
+          wildcard_expr(table, express, db, table_map, select_expr_alias);
         }
       } else {
         express.emplace_back(ExpressionFactory::NewExpression(select_sql.exprs[i], db, tables[0], &table_map));
+        select_expr_alias.emplace_back(select_sql.select_expr_alias[i]);
       }
     } else {
       express.emplace_back(ExpressionFactory::NewExpression(select_sql.exprs[i], db, tables[0], &table_map));
+      select_expr_alias.emplace_back(select_sql.select_expr_alias[i]);
     }
     if (i == 0) {
       break;

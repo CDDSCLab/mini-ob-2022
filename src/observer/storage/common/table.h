@@ -133,6 +133,9 @@ public:
   Index *find_index_by_field(const char *field_name) const;
   bool check_null_in_record_of_index(const char *record, Index *index);
 
+  void set_alias(const char *alias);
+  const char *alias() const;
+
 private:
   std::string base_dir_;
   CLogManager *clog_manager_;
@@ -140,6 +143,7 @@ private:
   DiskBufferPool *data_buffer_pool_ = nullptr;   /// 数据文件关联的buffer pool
   RecordFileHandler *record_handler_ = nullptr;  /// 记录操作
   std::vector<Index *> indexes_;
+  const char *alias_ = nullptr;
 };
 
 #endif  // __OBSERVER_STORAGE_COMMON_TABLE_H__
