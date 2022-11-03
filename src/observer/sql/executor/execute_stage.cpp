@@ -455,8 +455,8 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
 
     ProjectOperator project_oper;
     project_oper.add_child(&final_pre);
-    for (const Field &field : select_stmt->query_fields()) {
-      project_oper.add_projection(field.table(), field.meta(), field.aggr_type(), true);
+    for (const auto &expr : select_stmt->express()) {
+      project_oper.add_projection(expr, true);
     }
     rc = project_oper.open();
     if (rc != RC::SUCCESS) {
@@ -518,7 +518,7 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   //    project_oper.add_projection(field.table(), field.meta(), field.aggr_type());
   //  }
   for (const auto &expr : select_stmt->express()) {
-    project_oper.add_projection(expr);
+    project_oper.add_projection(expr, false);
   }
   if (select_stmt->aggr_fields().empty()) {
     project_oper.add_child(&pred_oper);

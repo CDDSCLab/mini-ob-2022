@@ -124,6 +124,9 @@ public:
     if (left_cell.attr_type() == NULLS || right_cell.attr_type() == NULLS) {
       cell = {NULLS, nullptr};
       return rc;
+    } else if (left_cell.attr_type() == UNDEFINED || right_cell.attr_type() == UNDEFINED) {
+      cell = {UNDEFINED, nullptr};
+      return rc;
     }
     switch (type_) {
       case EXPR_PLUS: {

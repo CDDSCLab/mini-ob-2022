@@ -39,7 +39,7 @@ public:
           }
         }
         get_table_and_field(db, default_table, tables, expr.attr, table, field);
-        return new FieldExpr(table, field, expr.attr.aggr_type);
+        return new FieldExpr(table, field, AGGR_NONE);
       }
       case EXPR_SELECT: {
         Stmt *select_stmt;

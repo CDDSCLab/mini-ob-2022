@@ -99,11 +99,30 @@ void ProjectOperator::add_projection(const FieldMeta *field_meta, Expression *ex
   tuple_.add_cell_spec(spec);
 }
 
-void ProjectOperator::add_projection(Expression *expr)
+void ProjectOperator::add_projection(Expression *expr, bool show_table_name)
 {
   auto spec = new TupleCellSpec(expr);
   std::stringstream ss;
-  ss << "*";
+  if (expr->type() == EXPR_ATTR) {
+    auto field = dynamic_cast<FieldExpr *>(expr)->field();
+    if (field.aggr_type() != AGGR_NONE) {
+      ss << aggr_type_to_string(field.aggr_type()) << "(";
+    }
+    if (show_table_name) {
+      ss << field.table_name() << ".";
+    }
+    if (0 == strcmp(field.field_name(), "__trx")) {
+      // For COUNT(*).
+      ss << "*";
+    } else {
+      ss << field.field_name();
+    }
+    if (field.aggr_type() != AGGR_NONE) {
+      ss << ")";
+    }
+  } else {
+    ss << "expr";
+  }
   spec->set_alias(strdup(ss.str().c_str()));
   tuple_.add_cell_spec(spec);
 }
