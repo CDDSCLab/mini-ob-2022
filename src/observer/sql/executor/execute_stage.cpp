@@ -519,7 +519,7 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   //    project_oper.add_projection(field.table(), field.meta(), field.aggr_type());
   //  }
   for (size_t i = 0; i < select_stmt->express().size(); i++) {
-    project_oper.add_projection(select_stmt->express()[i], true, select_stmt->select_expr_alias()[i]);
+    project_oper.add_projection(select_stmt->express()[i], false, select_stmt->select_expr_alias()[i]);
   }
   if (select_stmt->aggr_fields().empty()) {
     project_oper.add_child(&pred_oper);
