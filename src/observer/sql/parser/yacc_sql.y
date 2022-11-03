@@ -482,19 +482,20 @@ update_attr_list:
 select:				/*  select 语句的语法解析树*/
     select_unit SEMICOLON {
         CONTEXT->ssql->flag = SCF_SELECT;
-        CONTEXT->ssql->sstr.selection = CONTEXT->selects[CONTEXT->select_length - 1];
+        CONTEXT->ssql->sstr.selection = CONTEXT->selects[1];
     };
 select_unit:
-    SELECT select_attr FROM ID rel_list where group_by order_by {
+    select_begin select_attr FROM ID rel_list where group_by order_by {
         selects_append_relation(&CONTEXT->selects[CONTEXT->select_length], $4);
-        selects_append_conditions(&CONTEXT->selects[CONTEXT->select_length], CONTEXT->conditions, CONTEXT->condition_length);
 
         // 临时变量清零
         CONTEXT->condition_length = 0;
         CONTEXT->value_length = 0;
-        $$ = &CONTEXT->selects[CONTEXT->select_length++];
+        $$ = &CONTEXT->selects[CONTEXT->select_length--];
     };
-
+select_begin:
+    SELECT { CONTEXT->select_length++; }
+    ;
 select_attr:
      STAR select_attr_list {
         RelAttr attr;
@@ -622,46 +623,46 @@ join_list:
 
 where:
     /* empty */ 
-    | WHERE condition condition_list {	
-				// CONTEXT->conditions[CONTEXT->condition_length++]=*$2;
-			}
+    | WHERE condition condition_list {
+//        selects_append_conditions(&CONTEXT->selects[CONTEXT->select_length], CONTEXT->conditions, CONTEXT->condition_length);
+    }
     ;
 condition_list:
     /* empty */
     | AND condition condition_list {
 				// CONTEXT->conditions[CONTEXT->condition_length++]=*$2;
-			}
+    }
     ;
 
 condition:
     expr comOp expr {
         Condition condition;
         condition_init(&condition, $2, $1, $3);
-        CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+        selects_append_condition(&CONTEXT->selects[CONTEXT->select_length], &condition);
     }
     | expr IN LBRACE select_unit RBRACE  {
         Condition condition;
         expr_init_select(&CONTEXT->exprs[CONTEXT->expr_length], $4);
         condition_init(&condition, IN_OP, $1, &CONTEXT->exprs[CONTEXT->expr_length++]);
-        CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+        selects_append_condition(&CONTEXT->selects[CONTEXT->select_length], &condition);
     }
-    | expr IN NOT LBRACE select_unit RBRACE {
+    | expr NOT IN LBRACE select_unit RBRACE {
         Condition condition;
         expr_init_select(&CONTEXT->exprs[CONTEXT->expr_length], $5);
         condition_init(&condition, NOT_IN_OP, $1, &CONTEXT->exprs[CONTEXT->expr_length++]);
-        CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+        selects_append_condition(&CONTEXT->selects[CONTEXT->select_length], &condition);
     }
     | EXISTS LBRACE select_unit RBRACE {
         Condition condition;
         expr_init_select(&CONTEXT->exprs[CONTEXT->expr_length], $3);
         condition_init(&condition, EXISTS_OP, NULL, &CONTEXT->exprs[CONTEXT->expr_length++]);
-        CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+        selects_append_condition(&CONTEXT->selects[CONTEXT->select_length], &condition);
     }
     | NOT EXISTS LBRACE select_unit RBRACE {
         Condition condition;
         expr_init_select(&CONTEXT->exprs[CONTEXT->expr_length], $4);
         condition_init(&condition, NOT_EXISTS_OP, NULL, &CONTEXT->exprs[CONTEXT->expr_length++]);
-        CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+        selects_append_condition(&CONTEXT->selects[CONTEXT->select_length], &condition);
     }
 	| value null_comOp {
         Condition condition;
@@ -672,7 +673,7 @@ condition:
         expr_init_value(&CONTEXT->exprs[CONTEXT->expr_length++], right_value);
 
         condition_init(&condition, $2, &CONTEXT->exprs[CONTEXT->expr_length - 2], &CONTEXT->exprs[CONTEXT->expr_length - 1]);
-        CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+        selects_append_condition(&CONTEXT->selects[CONTEXT->select_length], &condition);
 	}
 	| attr null_comOp {
         Condition condition;
@@ -683,7 +684,7 @@ condition:
         expr_init_value(&CONTEXT->exprs[CONTEXT->expr_length++], right_value);
 
         condition_init(&condition, $2, &CONTEXT->exprs[CONTEXT->expr_length - 2], &CONTEXT->exprs[CONTEXT->expr_length - 1]);
-        CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+        selects_append_condition(&CONTEXT->selects[CONTEXT->select_length], &condition);
 	}
     ;
 comOp:
