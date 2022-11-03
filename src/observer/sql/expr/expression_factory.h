@@ -10,6 +10,8 @@
 #include "sql/expr/expression.h"
 #include "storage/common/db.h"
 #include "storage/common/table.h"
+#include "sql/stmt/select_stmt.h"
+#include "sql/operator/operator_factory.h"
 
 class ExpressionFactory {
 public:
@@ -31,11 +33,20 @@ public:
       case EXPR_ATTR: {
         Table *table = nullptr;
         const FieldMeta *field = nullptr;
+        if (0 == strcmp(expr.attr.attribute_name, "*")) {
+          if (expr.attr.aggr_type == AGGR_COUNT) {
+            return new FieldExpr(default_table, default_table->table_meta().field(0), expr.attr.aggr_type);
+          }
+        }
         get_table_and_field(db, default_table, tables, expr.attr, table, field);
         return new FieldExpr(table, field, expr.attr.aggr_type);
       }
       case EXPR_SELECT: {
-        // TODO
+        Stmt *select_stmt;
+        SelectStmt::create(db, *expr.select, select_stmt);
+        auto project_oper = new ProjectOperator();
+        OperatorFactory::GetProjectOperator(dynamic_cast<SelectStmt *>(select_stmt), project_oper);
+        return new SelectExpr(project_oper);
       }
       case EXPR_NONE:
       default: {
@@ -70,5 +81,19 @@ public:
     }
 
     return RC::SUCCESS;
+  }
+
+  static void wildcard_expr(
+      Table *table, std::vector<Expression *> &exprs, Db *db, std::unordered_map<std::string, Table *> table_map)
+  {
+    const TableMeta &table_meta = table->table_meta();
+    const int field_num = table_meta.field_num();
+    for (int i = table_meta.sys_field_num(); i < field_num; i++) {
+      Expr tmp;
+      tmp.expr_type = EXPR_ATTR;
+      tmp.attr.relation_name = const_cast<char *>(table->name());
+      tmp.attr.attribute_name = const_cast<char *>(table_meta.field(i)->name());
+      exprs.emplace_back(ExpressionFactory::NewExpression(tmp, db, table, &table_map));
+    }
   }
 };

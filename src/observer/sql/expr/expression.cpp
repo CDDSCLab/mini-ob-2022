@@ -13,6 +13,7 @@ See the Mulan PSL v2 for more details. */
 //
 
 #include "sql/expr/tuple.h"
+#include "sql/operator/project_operator.h"
 
 RC FieldExpr::get_value(const Tuple &tuple, TupleCell &cell) const
 {
@@ -23,4 +24,61 @@ RC ValueExpr::get_value(const Tuple &tuple, TupleCell &cell) const
 {
   cell = tuple_cell_;
   return RC::SUCCESS;
+}
+
+RC SelectExpr::get_value(const Tuple &tuple, TupleCell &cell) const
+{
+  RC rc = project_oper_->open();
+  if (rc != RC::SUCCESS) {
+    return rc;
+  }
+  if ((rc = project_oper_->next()) != RC::SUCCESS) {
+    project_oper_->close();
+    return rc;
+  }
+  auto current_tuple = project_oper_->current_tuple();
+  if (current_tuple->cell_num() > 1) {
+    project_oper_->close();
+    return RC::GENERIC_ERROR;
+  }
+  if (project_oper_->next() == RC::SUCCESS) {
+    project_oper_->close();
+    return RC::GENERIC_ERROR;
+  }
+  current_tuple->cell_at(0, cell);
+  project_oper_->close();
+  return RC::SUCCESS;
+}
+
+RC SelectExpr::get_values(const Tuple &tuple, std::vector<TupleCell> *cells)
+{
+  RC rc = project_oper_->open();
+  if (rc != RC::SUCCESS) {
+    return rc;
+  }
+  while (project_oper_->next() == RC::SUCCESS) {
+    auto current_tuple = project_oper_->current_tuple();
+    if (current_tuple->cell_num() > 1) {
+      project_oper_->close();
+      return RC::GENERIC_ERROR;
+    }
+    auto cell = new TupleCell();
+    rc = current_tuple->cell_at(0, *cell);
+    cells->emplace_back(*cell);
+  }
+
+  project_oper_->close();
+  return rc;
+}
+
+RC SelectExpr::has_value(const Tuple &tuple, bool *result)
+{
+  RC rc = project_oper_->open();
+  if (rc != RC::SUCCESS) {
+    return rc;
+  }
+  *result = project_oper_->next() == RC::SUCCESS;
+
+  project_oper_->close();
+  return rc;
 }

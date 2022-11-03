@@ -20,6 +20,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/expr/tuple_cell_operator.h"
 
 class Tuple;
+class ProjectOperator;
 
 class Expression {
 public:
@@ -154,4 +155,26 @@ private:
   ExprType type_;
   Expression *left_expr_;
   Expression *right_expr_;
+};
+
+class SelectExpr : public Expression {
+public:
+  SelectExpr(ProjectOperator *project_oper) : project_oper_(project_oper)
+  {}
+
+  SelectExpr() = default;
+
+  ExprType type() const override
+  {
+    return EXPR_SELECT;
+  }
+
+  RC get_value(const Tuple &tuple, TupleCell &cell) const override;
+
+  RC get_values(const Tuple &tuple, std::vector<TupleCell> *cells);
+
+  RC has_value(const Tuple &tuple, bool *result);
+
+private:
+  ProjectOperator *project_oper_;
 };

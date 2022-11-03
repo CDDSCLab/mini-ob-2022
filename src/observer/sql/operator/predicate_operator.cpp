@@ -43,7 +43,12 @@ RC PredicateOperator::next()
       break;
     }
 
-    if (do_predicate(static_cast<RowTuple &>(*tuple))) {
+    bool result = false;
+    rc = do_predicate(static_cast<RowTuple &>(*tuple), &result);
+    if (rc != RC::SUCCESS) {
+      return rc;
+    }
+    if (result) {
       return rc;
     }
   }
@@ -61,10 +66,12 @@ Tuple *PredicateOperator::current_tuple()
   return children_[0]->current_tuple();
 }
 
-bool PredicateOperator::do_predicate(RowTuple &tuple)
+RC PredicateOperator::do_predicate(RowTuple &tuple, bool *result)
 {
+  RC rc = RC::SUCCESS;
   if (filter_stmt_ == nullptr || filter_stmt_->filter_units().empty()) {
-    return true;
+    *result = true;
+    return rc;
   }
 
   for (const FilterUnit *filter_unit : filter_stmt_->filter_units()) {
@@ -76,24 +83,67 @@ bool PredicateOperator::do_predicate(RowTuple &tuple)
     left_expr->get_value(tuple, left_cell);
     right_expr->get_value(tuple, right_cell);
 
-    // add by Benevor
-    if (left_cell.attr_type() == UNDEFINED || right_cell.attr_type() == UNDEFINED) {
-      return true;
+    bool filter_result = false;
+    if (comp == IN_OP) {
+      std::vector<TupleCell> cells;
+      rc = dynamic_cast<SelectExpr *>(right_expr)->get_values(tuple, &cells);
+      if (rc != RC::SUCCESS) {
+        return rc;
+      }
+      for (const auto cell : cells) {
+        if (cell.compare(left_cell) == 0) {
+          filter_result = true;
+          break;
+        }
+        filter_result = false;
+      }
+    } else if (comp == NOT_IN_OP) {
+      std::vector<TupleCell> cells;
+      rc = dynamic_cast<SelectExpr *>(right_expr)->get_values(tuple, &cells);
+      if (rc != RC::SUCCESS) {
+        return rc;
+      }
+      for (const auto cell : cells) {
+        if (cell.compare(left_cell) == 0) {
+          filter_result = false;
+          break;
+        }
+        filter_result = true;
+      }
+    } else if (comp == EXISTS_OP) {
+      rc = dynamic_cast<SelectExpr *>(right_expr)->has_value(tuple, &filter_result);
+      if (rc != RC::SUCCESS) {
+        return rc;
+      }
+    } else if (comp == NOT_EXISTS_OP) {
+      rc = dynamic_cast<SelectExpr *>(right_expr)->has_value(tuple, &filter_result);
+      if (rc != RC::SUCCESS) {
+        return rc;
+      }
+      filter_result = !filter_unit;
+    } else if (right_expr->type() == EXPR_SELECT) {
+      std::vector<TupleCell> cells;
+      rc = dynamic_cast<SelectExpr *>(right_expr)->get_value(tuple, right_cell);
+      if (rc != RC::SUCCESS) {
+        return rc;
+      }
+    } else if (left_cell.attr_type() == UNDEFINED || right_cell.attr_type() == UNDEFINED) {
+      *result = true;
+      return rc;
     }
 
     // NULL 特殊处理
     if (left_cell.attr_type() == NULLS || right_cell.attr_type() == NULLS) {
       switch (comp) {
         case IS_NULL:
-          return left_cell.attr_type() == NULLS;
+          filter_result = left_cell.attr_type() == NULLS;
         case IS_NOT_NULL:
-          return left_cell.attr_type() != NULLS;
+          filter_result = left_cell.attr_type() != NULLS;
         default:
-          return false;
+          filter_result = false;
       }
     }
 
-    bool filter_result = false;
     if (comp == LIKE_OP) {
       filter_result = like(left_cell, right_cell);
     } else if (comp == NOT_LIKE_OP) {
@@ -125,10 +175,12 @@ bool PredicateOperator::do_predicate(RowTuple &tuple)
       }
     }
     if (!filter_result) {
-      return false;
+      *result = false;
+      return rc;
     }
   }
-  return true;
+  *result = true;
+  return rc;
 }
 
 bool PredicateOperator::like(const TupleCell &left_cell, const TupleCell &right_cell)
