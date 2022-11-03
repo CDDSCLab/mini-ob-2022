@@ -205,11 +205,6 @@ void selects_append_relation(Selects *selects, const char *relation_name)
   selects->relations[selects->relation_num++] = strdup(relation_name);
 }
 
-void selects_append_condition(Selects *selects, Condition *condition)
-{
-  selects->conditions[selects->condition_num++] = *condition;
-}
-
 void selects_append_conditions(Selects *selects, Condition conditions[], size_t condition_num)
 {
   assert(condition_num <= sizeof(selects->conditions) / sizeof(selects->conditions[0]));
