@@ -520,8 +520,10 @@ RC Table::update_record(
         copy_len = data_len + 1;
       }
       memcpy(record->data() + field->offset(), value->data, copy_len);
+      *((char *)(record->data() + field->offset()) + field->len() - 1) = (char)(value_type == NULLS || value->is_null);
     } else {
       memcpy(record->data() + field->offset(), value->data, field->len() - 1);
+      *((char *)(record->data() + field->offset()) + field->len() - 1) = (char)(value_type == NULLS || value->is_null);
     }
   }
   return rc;
