@@ -144,6 +144,10 @@ public:
     combine_aggregate_values(&hash_table_[aggr_key], aggr_value);
   }
 
+  void clear() {
+    hash_table_.clear();
+  }
+
   class Iterator {
   public:
     explicit Iterator()

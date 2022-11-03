@@ -61,6 +61,8 @@ RC AggregationOperator::next()
 
 RC AggregationOperator::close()
 {
+  hash_table_.clear();
+  init_ = false;
   if (children_.size() != 1) {
     LOG_WARN("aggregation operator must has one child");
     return RC::INTERNAL;
