@@ -68,6 +68,7 @@ public:
   void get_alias(std::ostream &os) override
   {
     os << field_.field_name();
+    return;
   }
 
   RC get_value(const Tuple &tuple, TupleCell &cell) const override;
@@ -102,6 +103,7 @@ public:
   void get_alias(std::ostream &os) override
   {
     tuple_cell_.to_string(os);
+    return;
   }
 
 private:
@@ -225,6 +227,7 @@ public:
     } else {
       right_expr_->get_alias(os);
     }
+    return;
   }
 
 private:
@@ -250,6 +253,11 @@ public:
   RC get_values(const Tuple &tuple, std::vector<TupleCell> *cells);
 
   RC has_value(const Tuple &tuple, bool *result);
+
+  void get_alias(std::ostream &os) override
+  {
+    return;
+  }
 
 private:
   ProjectOperator *project_oper_;
