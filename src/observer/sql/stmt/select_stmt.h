@@ -19,6 +19,7 @@ See the Mulan PSL v2 for more details. */
 #include "rc.h"
 #include "sql/stmt/stmt.h"
 #include "storage/common/field.h"
+#include "sql/expr/expression.h"
 
 class FieldMeta;
 class FilterStmt;
@@ -42,6 +43,10 @@ public:
   const std::vector<Table *> &tables() const
   {
     return tables_;
+  }
+  const std::vector<Expression *> &express() const
+  {
+    return express_;
   }
   const std::vector<Field> &query_fields() const
   {
@@ -73,6 +78,7 @@ public:
   }
 
 private:
+  std::vector<Expression *> express_;
   std::vector<Field> query_fields_;
   std::vector<Field> aggr_fields_;
   std::vector<Field> group_by_fields_;

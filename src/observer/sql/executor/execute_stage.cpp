@@ -514,8 +514,11 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   pred_oper.add_child(scan_oper);
   AggregationOperator aggr_oper(select_stmt->aggr_fields(), select_stmt->group_by_fields());
   ProjectOperator project_oper;
-  for (const Field &field : select_stmt->query_fields()) {
-    project_oper.add_projection(field.table(), field.meta(), field.aggr_type(), false);
+  //  for (const Field &field : select_stmt->query_fields()) {
+  //    project_oper.add_projection(field.table(), field.meta(), field.aggr_type());
+  //  }
+  for (const auto &expr : select_stmt->express()) {
+    project_oper.add_projection(expr);
   }
   if (select_stmt->aggr_fields().empty()) {
     project_oper.add_child(&pred_oper);

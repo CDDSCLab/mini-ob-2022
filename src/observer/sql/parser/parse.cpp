@@ -173,8 +173,32 @@ void selects_append_attribute(Selects *selects, RelAttr *rel_attr)
 void selects_append_expr(Selects *selects, Expr *expr)
 {
   selects->exprs[selects->expr_num++] = *expr;
-  // TODO: 仅为了本地测试能跑， 后面应该删掉。
-  selects->attributes[selects->attr_num++] = expr->attr;
+  // TODO: 仅为了本地测试能跑， 后面应该优化
+  selects_append_attr(selects, expr);
+}
+void selects_append_attr(Selects *selects, Expr *expr)
+{
+  switch (expr->expr_type) {
+    case EXPR_PLUS:
+    case EXPR_MINUS:
+    case EXPR_MULTIPLY:
+    case EXPR_DIVIDE: {
+      selects_append_attr(selects, expr->left);
+      selects_append_attr(selects, expr->right);
+    } break;
+    case EXPR_NEGATIVE: {
+      selects_append_attr(selects, expr->left);
+    } break;
+    case EXPR_ATTR: {
+      selects->attributes[selects->attr_num++] = expr->attr;
+    } break;
+    case EXPR_SELECT:
+      break;
+    case EXPR_VALUE:
+    case EXPR_NONE:
+    default:
+      break;
+  }
 }
 void selects_append_relation(Selects *selects, const char *relation_name)
 {

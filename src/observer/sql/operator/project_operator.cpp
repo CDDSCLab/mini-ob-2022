@@ -79,6 +79,46 @@ void ProjectOperator::add_projection(
   tuple_.add_cell_spec(spec);
 }
 
+void ProjectOperator::add_projection(const FieldMeta *field_meta, Expression *expr, AggrType aggr_type)
+{
+  auto spec = new TupleCellSpec(expr);
+  std::stringstream ss;
+  if (aggr_type != AGGR_NONE) {
+    ss << aggr_type_to_string(aggr_type) << "(";
+  }
+  if (field_meta->visible()) {
+    ss << field_meta->name();
+  } else {
+    // For COUNT(*).
+    ss << "*";
+  }
+  if (aggr_type != AGGR_NONE) {
+    ss << ")";
+  }
+  spec->set_alias(strdup(ss.str().c_str()));
+  tuple_.add_cell_spec(spec);
+}
+
+void ProjectOperator::add_projection(Expression *expr)
+{
+  auto spec = new TupleCellSpec(expr);
+  std::stringstream ss;
+  ss << "*";
+  spec->set_alias(strdup(ss.str().c_str()));
+  tuple_.add_cell_spec(spec);
+}
+
+void ProjectOperator::my_add_projection(const Table *table, const FieldMeta *field_meta)
+{
+  // 对单表来说，展示的(alias) 字段总是字段名称，
+  // 对多表查询来说，展示的alias 需要带表名字
+  TupleCellSpec *spec = new TupleCellSpec(new FieldExpr(table, field_meta));
+
+  spec->set_alias(field_meta->name());
+  spec->set_t(table->name());
+  tuple_.add_cell_spec(spec);
+}
+
 RC ProjectOperator::tuple_cell_spec_at(int index, const TupleCellSpec *&spec) const
 {
   return tuple_.cell_spec_at(index, spec);

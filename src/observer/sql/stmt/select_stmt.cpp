@@ -21,6 +21,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/lang/string.h"
 #include "storage/common/db.h"
 #include "storage/common/table.h"
+#include "sql/expr/expression_factory.h"
 
 SelectStmt::~SelectStmt()
 {
@@ -73,6 +74,12 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
   for (size_t i = select_sql.attr_num - 1;; i--) {
     const RelAttr &relation_attr = select_sql.attributes[i];
     auto aggr_type = relation_attr.aggr_type;
+    if (aggr_type == AGGR_NONE) {
+      if (i == 0) {
+        break;
+      }
+      continue;
+    }
     if (0 == strcmp(relation_attr.attribute_name, "*") && aggr_type != AGGR_NONE && aggr_type != AGGR_COUNT) {
       return RC::GENERIC_ERROR;
     } else if (0 == strcmp(relation_attr.attribute_name, "1") && aggr_type != AGGR_COUNT) {
@@ -167,6 +174,14 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
         aggr_fields.emplace_back(table, field_meta, aggr_type);
       }
     }
+    if (i == 0) {
+      break;
+    }
+  }
+
+  std::vector<Expression *> express;
+  for (size_t i = select_sql.expr_num - 1;; i--) {
+    express.emplace_back(ExpressionFactory::NewExpression(select_sql.exprs[i], db, tables[0], &table_map));
     if (i == 0) {
       break;
     }
@@ -479,6 +494,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
   // everything alright
   auto select_stmt = new SelectStmt();
   select_stmt->tables_.swap(tables);
+  select_stmt->express_.swap(express);
   select_stmt->query_fields_.swap(query_fields);
   select_stmt->aggr_fields_.swap(aggr_fields);
   select_stmt->group_by_fields_.swap(group_by_fields);

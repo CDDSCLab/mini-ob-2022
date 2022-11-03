@@ -271,6 +271,7 @@ void attr_info_destroy(AttrInfo *attr_info);
 void selects_init(Selects *selects, ...);
 void selects_append_attribute(Selects *selects, RelAttr *rel_attr);
 void selects_append_expr(Selects *selects, Expr *expr);
+void selects_append_attr(Selects *selects, Expr *expr);
 void selects_append_relation(Selects *selects, const char *relation_name);
 void selects_append_conditions(Selects *selects, Condition conditions[], size_t condition_num);
 void selects_append_groups(Selects *selects, RelAttr *rel_attr);
