@@ -73,6 +73,9 @@ public:
         (left.attr_type() == INTS && right.attr_type() == FLOATS) ||
         (left.attr_type() == FLOATS && right.attr_type() == INTS) ||
         (left.attr_type() == FLOATS && right.attr_type() == FLOATS)) {
+      if (TupleCellToFloat(right) == 0) {
+        return {NULLS, nullptr};
+      }
       float result = TupleCellToFloat(left) / TupleCellToFloat(right);
       Value value;
       value_init_float(&value, result);

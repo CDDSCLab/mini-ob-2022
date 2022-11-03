@@ -120,6 +120,10 @@ public:
     } else {
       return RC::GENERIC_ERROR;
     }
+    if (left_cell.attr_type() == NULLS || right_cell.attr_type() == NULLS) {
+      cell = {NULLS, nullptr};
+      return rc;
+    }
     switch (type_) {
       case EXPR_PLUS: {
         cell = TupleCellOperator::Plus(left_cell, right_cell);
