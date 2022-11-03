@@ -50,6 +50,7 @@ static void wildcard_expr(Table *table, std::vector<Expression *> &exprs, Db *db
     tmp.expr_type = EXPR_ATTR;
     tmp.attr.relation_name = const_cast<char *>(table->name());
     tmp.attr.attribute_name = const_cast<char *>(table_meta.field(i)->name());
+    tmp.attr.aggr_type = AGGR_NONE;
     exprs.emplace_back(ExpressionFactory::NewExpression(tmp, db, table, &table_map));
     select_expr_alias.emplace_back(nullptr);
   }

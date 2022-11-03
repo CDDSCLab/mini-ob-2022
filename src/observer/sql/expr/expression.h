@@ -137,7 +137,11 @@ public:
     if (left_cell.attr_type() == NULLS || right_cell.attr_type() == NULLS) {
       cell = {NULLS, nullptr};
       return rc;
-    } else if (left_cell.attr_type() == UNDEFINED || right_cell.attr_type() == UNDEFINED) {
+    } else if (type_ >= EXPR_PLUS && type_ <= EXPR_DIVIDE &&
+               (left_cell.attr_type() == UNDEFINED || right_cell.attr_type() == UNDEFINED)) {
+      cell = {UNDEFINED, nullptr};
+      return rc;
+    } else if (type_ == EXPR_NEGATIVE && left_cell.attr_type() == UNDEFINED) {
       cell = {UNDEFINED, nullptr};
       return rc;
     }
