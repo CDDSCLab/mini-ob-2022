@@ -551,6 +551,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
   select_stmt->order_by_types_.swap(order_by_types);
   select_stmt->filter_stmt_ = filter_stmt;
   select_stmt->having_stmt_ = having_stmt;
+  select_stmt->select_expr_alias_.swap(select_expr_alias);
   stmt = select_stmt;
   return RC::SUCCESS;
 }

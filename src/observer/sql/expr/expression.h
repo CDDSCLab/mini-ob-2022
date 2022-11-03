@@ -29,6 +29,7 @@ public:
 
   virtual RC get_value(const Tuple &tuple, TupleCell &cell) const = 0;
   virtual ExprType type() const = 0;
+  virtual void get_alias(std::ostream &os) = 0;
 };
 
 class FieldExpr : public Expression {
@@ -64,6 +65,11 @@ public:
     return field_.field_name();
   }
 
+  void get_alias(std::ostream &os) override
+  {
+    os << field_.field_name();
+  }
+
   RC get_value(const Tuple &tuple, TupleCell &cell) const override;
 
 private:
@@ -91,6 +97,11 @@ public:
   void get_tuple_cell(TupleCell &cell) const
   {
     cell = tuple_cell_;
+  }
+
+  void get_alias(std::ostream &os) override
+  {
+    tuple_cell_.to_string(os);
   }
 
 private:
@@ -152,6 +163,68 @@ public:
       } break;
     }
     return rc;
+  }
+
+  void get_alias(std::ostream &os) override
+  {
+    if (type_ == EXPR_NONE || type_ == EXPR_SELECT) {
+      return;
+    }
+
+    if (type_ == EXPR_NEGATIVE) {
+      os << "-";
+      if (left_expr_->type() != EXPR_VALUE && left_expr_->type() != EXPR_ATTR) {
+        os << "(";
+        left_expr_->get_alias(os);
+        os << ")";
+      } else {
+        left_expr_->get_alias(os);
+      }
+      return;
+    }
+
+    if ((left_expr_->type() == EXPR_PLUS || left_expr_->type() == EXPR_MINUS) &&
+        (type_ == EXPR_MULTIPLY || type_ == EXPR_DIVIDE)) {
+      os << "(";
+      left_expr_->get_alias(os);
+      os << ")";
+    } else {
+      left_expr_->get_alias(os);
+    }
+
+    switch (type_) {
+      case EXPR_PLUS: {
+        os << "+";
+        break;
+      }
+      case EXPR_MINUS: {
+        os << "-";
+        break;
+      }
+      case EXPR_MULTIPLY: {
+        os << "*";
+        break;
+      }
+      case EXPR_DIVIDE: {
+        os << "/";
+        break;
+      }
+      default:
+        break;
+    }
+
+    if ((right_expr_->type() == EXPR_PLUS || right_expr_->type() == EXPR_MINUS) &&
+        (type_ == EXPR_MULTIPLY || type_ == EXPR_DIVIDE)) {
+      os << "(";
+      right_expr_->get_alias(os);
+      os << ")";
+    } else if (right_expr_->type() == EXPR_NEGATIVE) {
+      os << "(";
+      right_expr_->get_alias(os);
+      os << ")";
+    } else {
+      right_expr_->get_alias(os);
+    }
   }
 
 private:

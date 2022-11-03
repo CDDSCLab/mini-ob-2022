@@ -141,6 +141,7 @@ void ExecuteStage::handle_request(common::StageEvent *event)
     switch (stmt->type()) {
       case StmtType::SELECT: {
         do_select(sql_event);
+        clear_alias(sql_event);
       } break;
       case StmtType::INSERT: {
         do_insert(sql_event);
@@ -455,8 +456,8 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
 
     ProjectOperator project_oper;
     project_oper.add_child(&final_pre);
-    for (const auto &expr : select_stmt->express()) {
-      project_oper.add_projection(expr, true);
+    for (size_t i = 0; i < select_stmt->express().size(); i++) {
+      project_oper.add_projection(select_stmt->express()[i], true, select_stmt->select_expr_alias()[i]);
     }
     rc = project_oper.open();
     if (rc != RC::SUCCESS) {
@@ -517,8 +518,8 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   //  for (const Field &field : select_stmt->query_fields()) {
   //    project_oper.add_projection(field.table(), field.meta(), field.aggr_type());
   //  }
-  for (const auto &expr : select_stmt->express()) {
-    project_oper.add_projection(expr, false);
+  for (size_t i = 0; i < select_stmt->express().size(); i++) {
+    project_oper.add_projection(select_stmt->express()[i], true, select_stmt->select_expr_alias()[i]);
   }
   if (select_stmt->aggr_fields().empty()) {
     project_oper.add_child(&pred_oper);
@@ -579,6 +580,17 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   }
   session_event->set_response(ss.str());
   return rc;
+}
+
+void ExecuteStage::clear_alias(SQLStageEvent *sql_event)
+{
+  auto select_s = dynamic_cast<SelectStmt *>(sql_event->stmt());
+  for (auto table : select_s->tables()) {
+    table->set_alias(nullptr);
+  }
+  for (auto field : select_s->query_fields()) {
+    field.set_alias(nullptr);
+  }
 }
 
 void ExecuteStage::do_order_by_print(std::vector<std::vector<TupleCell>> result_tuples,

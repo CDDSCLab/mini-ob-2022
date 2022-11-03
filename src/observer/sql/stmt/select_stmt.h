@@ -77,6 +77,11 @@ public:
     return having_stmt_;
   }
 
+  const std::vector<char *> &select_expr_alias() const
+  {
+    return select_expr_alias_;
+  }
+
 private:
   std::vector<Expression *> express_;
   std::vector<Field> query_fields_;
@@ -85,6 +90,7 @@ private:
   std::vector<Table *> tables_;
   std::vector<Field> order_by_fields_;
   std::vector<OrderType> order_by_types_;
+  std::vector<char *> select_expr_alias_;
   FilterStmt *filter_stmt_ = nullptr;
   FilterStmt *having_stmt_ = nullptr;
 };
