@@ -106,9 +106,11 @@ typedef struct _Selects {
   size_t attr_num;                    // Length of attrs in Select clause
   Expr exprs[MAX_NUM];                // express in Select clause
   size_t expr_num;                    // Length of express in Select clause
+  char *select_expr_alias[MAX_NUM];   // attrs alias in Select clause
   RelAttr attributes[MAX_NUM];        // attrs in Select clause
   size_t relation_num;                // Length of relations in From clause
   char *relations[MAX_NUM];           // relations in From clause
+  char *relation_alias[MAX_NUM];      // relation alias in From clause
   size_t condition_num;               // Length of conditions in Where clause
   Condition conditions[MAX_NUM];      // conditions in Where clause
   size_t group_num;                   // Length of group by in Select clause
@@ -270,9 +272,9 @@ void attr_info_destroy(AttrInfo *attr_info);
 
 void selects_init(Selects *selects, ...);
 void selects_append_attribute(Selects *selects, RelAttr *rel_attr);
-void selects_append_expr(Selects *selects, Expr *expr);
+void selects_append_expr(Selects *selects, Expr *expr, const char *attr_alias);
 void selects_append_attr(Selects *selects, Expr *expr);
-void selects_append_relation(Selects *selects, const char *relation_name);
+void selects_append_relation(Selects *selects, const char *relation_name, const char *relation_alias);
 void selects_append_conditions(Selects *selects, Condition conditions[], size_t condition_num);
 void selects_append_groups(Selects *selects, RelAttr *rel_attr);
 void selects_append_having(Selects *selects, Condition *condition);

@@ -92,6 +92,7 @@ QUOTE            [\'\"]
 [Gg][Rr][Oo][Uu][Pp]                                 RETURN_TOKEN(GROUP);
 [Oo][Rr][Dd][Ee][Rr]                                 RETURN_TOKEN(ORDER);
 [Bb][Yy]                                             RETURN_TOKEN(BY);
+[Aa][Ss]                                             RETURN_TOKEN(AS);
 [Aa][Ss][Cc]                                         RETURN_TOKEN(ASC);
 [Hh][Aa][Vv][Ii][Nn][Gg]                             RETURN_TOKEN(HAVING);
 [Nn][Uu][Ll][Ll]                                     RETURN_TOKEN(NULL_TOKEN);

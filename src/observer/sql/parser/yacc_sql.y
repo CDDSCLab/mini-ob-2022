@@ -145,6 +145,7 @@ ParserContext *get_context(yyscan_t scanner)
         MINUS
         STAR
         DIVIDE
+        AS
 
 %union {
   struct _RelAttr *_attr;
@@ -183,6 +184,7 @@ ParserContext *get_context(yyscan_t scanner)
 %type <_expr> add_expr;
 %type <_expr> mul_expr;
 %type <_expr> primary_expr;
+%type <string> alias;
 
 %%
 
@@ -488,8 +490,8 @@ select:				/*  select 语句的语法解析树*/
         CONTEXT->ssql->sstr.selection = CONTEXT->selects[1];
     };
 select_unit:
-    select_begin select_attr FROM ID rel_list where group_by order_by {
-        selects_append_relation(&CONTEXT->selects[CONTEXT->select_length], $4);
+    select_begin select_attr FROM ID alias rel_list where group_by order_by {
+        selects_append_relation(&CONTEXT->selects[CONTEXT->select_length], $4, $5);
         selects_append_conditions(&CONTEXT->selects[CONTEXT->select_length],
                 CONTEXT->conditions[CONTEXT->select_length], CONTEXT->condition_length[CONTEXT->select_length]);
         // 临时变量清零
@@ -497,6 +499,20 @@ select_unit:
         CONTEXT->value_length = 0;
         $$ = &CONTEXT->selects[CONTEXT->select_length--];
     };
+
+alias:
+    // empty
+    {
+        $$ = NULL;
+    }
+    | AS ID{
+        $$ = $2;
+    }
+    | ID{
+        $$ = $1;
+    }
+    ;
+
 select_begin:
     SELECT { CONTEXT->select_length++; }
     ;
@@ -505,15 +521,15 @@ select_attr:
         RelAttr attr;
         relation_attr_init(&attr, NULL, "*");
         expr_init_attr(&CONTEXT->exprs[CONTEXT->expr_length], &attr);
-        selects_append_expr(&CONTEXT->selects[CONTEXT->select_length], &CONTEXT->exprs[CONTEXT->expr_length++]);
+        selects_append_expr(&CONTEXT->selects[CONTEXT->select_length], &CONTEXT->exprs[CONTEXT->expr_length++], NULL);
     }
-    | expr select_attr_list {
-        selects_append_expr(&CONTEXT->selects[CONTEXT->select_length], $1);
+    | expr alias select_attr_list {
+        selects_append_expr(&CONTEXT->selects[CONTEXT->select_length], $1, $2);
     };
 select_attr_list:
     /* empty */
-    | COMMA expr select_attr_list {
-        selects_append_expr(&CONTEXT->selects[CONTEXT->select_length], $2);
+    | COMMA expr alias select_attr_list {
+        selects_append_expr(&CONTEXT->selects[CONTEXT->select_length], $2, $3);
     };
 expr:
     add_expr {
@@ -609,20 +625,20 @@ aggr_type:
 
 rel_list:
     /* empty */
-    | COMMA ID rel_list {
-            selects_append_relation(&CONTEXT->selects[CONTEXT->select_length], $2);
+    | COMMA ID alias rel_list {
+        selects_append_relation(&CONTEXT->selects[CONTEXT->select_length], $2, $3);
     }
     | join {
     };
 
 join:
-	INNER JOIN ID ON condition condition_list join_list {
-		selects_append_relation(&CONTEXT->selects[CONTEXT->select_length], $3);
+	INNER JOIN ID alias ON condition condition_list join_list {
+		selects_append_relation(&CONTEXT->selects[CONTEXT->select_length], $3, $4);
 	};
 join_list:
 	/* empty */
-	| INNER JOIN ID  ON condition condition_list join_list {
-		selects_append_relation(&CONTEXT->selects[CONTEXT->select_length], $3);
+	| INNER JOIN ID alias  ON condition condition_list join_list {
+		selects_append_relation(&CONTEXT->selects[CONTEXT->select_length], $3, $4);
 	};
 
 where:

@@ -170,10 +170,15 @@ void selects_append_attribute(Selects *selects, RelAttr *rel_attr)
 {
   selects->attributes[selects->attr_num++] = *rel_attr;
 }
-void selects_append_expr(Selects *selects, Expr *expr)
+void selects_append_expr(Selects *selects, Expr *expr, const char *attr_alias)
 {
-  selects->exprs[selects->expr_num++] = *expr;
+  selects->exprs[selects->expr_num] = *expr;
   // TODO: 仅为了本地测试能跑， 后面应该优化
+  if (attr_alias == NULL) {
+    selects->select_expr_alias[selects->expr_num++] = nullptr;
+  } else {
+    selects->select_expr_alias[selects->expr_num++] = strdup(attr_alias);
+  }
   selects_append_attr(selects, expr);
 }
 void selects_append_attr(Selects *selects, Expr *expr)
@@ -200,9 +205,14 @@ void selects_append_attr(Selects *selects, Expr *expr)
       break;
   }
 }
-void selects_append_relation(Selects *selects, const char *relation_name)
+void selects_append_relation(Selects *selects, const char *relation_name, const char *relation_alias)
 {
-  selects->relations[selects->relation_num++] = strdup(relation_name);
+  selects->relations[selects->relation_num] = strdup(relation_name);
+  if (relation_alias == NULL) {
+    selects->relation_alias[selects->relation_num++] = nullptr;
+  } else {
+    selects->relation_alias[selects->relation_num++] = strdup(relation_alias);
+  }
 }
 
 void selects_append_conditions(Selects *selects, Condition conditions[], size_t condition_num)
