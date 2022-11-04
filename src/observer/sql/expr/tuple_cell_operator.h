@@ -135,7 +135,14 @@ public:
     // double res = my_round(left, right);
     // float result = std::round(left * pow(10, right)) / pow(10, right);
     int num = 0;
-    auto tmp = left;
+    float tmp;
+    if (left < 0) {
+      tmp = 0 - left;
+      num++;
+    } else {
+      tmp = left;
+    }
+
     while (tmp / 10 > 1) {
       tmp = tmp / 10;
       num++;
