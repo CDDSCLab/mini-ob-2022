@@ -41,11 +41,11 @@ RC SelectExpr::get_value(const Tuple &tuple, TupleCell &cell) const
     project_oper_->close();
     return RC::GENERIC_ERROR;
   }
+  current_tuple->cell_at(0, cell);
   if (project_oper_->next() == RC::SUCCESS) {
     project_oper_->close();
     return RC::GENERIC_ERROR;
   }
-  current_tuple->cell_at(0, cell);
   project_oper_->close();
   return RC::SUCCESS;
 }
