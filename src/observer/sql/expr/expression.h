@@ -209,7 +209,16 @@ public:
     if (type_ == EXPR_ROUND) {
       os << "round(";
       left_expr_->get_alias(os);
-      os << ",";
+      os << ", ";
+      right_expr_->get_alias(os);
+      os << ")";
+      return;
+    }
+
+    if (type_ == EXPR_DATE_FORMAT) {
+      os << "date_format(";
+      left_expr_->get_alias(os);
+      os << ", ";
       right_expr_->get_alias(os);
       os << ")";
       return;
