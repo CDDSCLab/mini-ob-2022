@@ -65,78 +65,62 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
   // collect tables in `from` statement
   std::vector<Table *> tables;
   std::unordered_map<std::string, Table *> table_map;
-  for (size_t i = select_sql.relation_num - 1;; --i) {
-    const char *table_name = select_sql.relations[i];
-    const char *table_alias = select_sql.relation_alias[i];
-    if (nullptr == table_name) {
-      LOG_WARN("invalid argument. relation name is null. index=%d", i);
-      return RC::INVALID_ARGUMENT;
-    }
+  if (select_sql.relation_num > 0) {
+    for (size_t i = select_sql.relation_num - 1;; --i) {
+      const char *table_name = select_sql.relations[i];
+      const char *table_alias = select_sql.relation_alias[i];
+      if (nullptr == table_name) {
+        LOG_WARN("invalid argument. relation name is null. index=%d", i);
+        return RC::INVALID_ARGUMENT;
+      }
 
-    Table *table = db->find_table(table_name);
-    if (nullptr == table) {
-      LOG_WARN("no such table. db=%s, table_name=%s", db->name(), table_name);
-      return RC::SCHEMA_TABLE_NOT_EXIST;
-    }
+      Table *table = db->find_table(table_name);
+      if (nullptr == table) {
+        LOG_WARN("no such table. db=%s, table_name=%s", db->name(), table_name);
+        return RC::SCHEMA_TABLE_NOT_EXIST;
+      }
 
-    table->set_alias(table_alias);
-    tables.push_back(table);
-    table_map.insert(std::pair<std::string, Table *>(table_name, table));
-    if (table_alias != NULL) {
-      table_map.insert(std::pair<std::string, Table *>(table_alias, table));
-    }
-    if (i == 0) {
-      break;
+      table->set_alias(table_alias);
+      tables.push_back(table);
+      table_map.insert(std::pair<std::string, Table *>(table_name, table));
+      if (table_alias != NULL) {
+        table_map.insert(std::pair<std::string, Table *>(table_alias, table));
+      }
+      if (i == 0) {
+        break;
+      }
     }
   }
 
   // Check aggregation type.
-  for (size_t i = select_sql.attr_num - 1;; i--) {
-    const RelAttr &relation_attr = select_sql.attributes[i];
-    auto aggr_type = relation_attr.aggr_type;
-    if (aggr_type == AGGR_NONE) {
-      if (i == 0) {
-        break;
-      }
-      continue;
-    }
-    if (0 == strcmp(relation_attr.attribute_name, "*") && aggr_type != AGGR_NONE && aggr_type != AGGR_COUNT) {
-      return RC::GENERIC_ERROR;
-    } else if (0 == strcmp(relation_attr.attribute_name, "1") && aggr_type != AGGR_COUNT) {
-      return RC::GENERIC_ERROR;
-    }
-    if (i == 0) {
-      break;
-    }
-  }
-
   // collect query fields in `select` statement
   std::vector<Field> aggr_fields;
   std::vector<Field> query_fields;
-  for (size_t i = select_sql.attr_num - 1;; i--) {
-    const RelAttr &relation_attr = select_sql.attributes[i];
-    auto aggr_type = relation_attr.aggr_type;
-
-    if (common::is_blank(relation_attr.relation_name) && 0 == strcmp(relation_attr.attribute_name, "*")) {
-      if (aggr_type != AGGR_NONE) {
-        const auto table = tables[0];
-        const auto field_meta = table->table_meta().field(0);
-        query_fields.emplace_back(table, field_meta, aggr_type);
-        aggr_fields.emplace_back(table, field_meta, aggr_type);
-      } else {
-        for (Table *table : tables) {
-          wildcard_fields(table, query_fields);
+  if (select_sql.attr_num > 0) {
+    for (size_t i = select_sql.attr_num - 1;; i--) {
+      const RelAttr &relation_attr = select_sql.attributes[i];
+      auto aggr_type = relation_attr.aggr_type;
+      if (aggr_type == AGGR_NONE) {
+        if (i == 0) {
+          break;
         }
+        continue;
       }
-    } else if (!common::is_blank(relation_attr.relation_name)) {  // TODO
-      const char *table_name = relation_attr.relation_name;
-      const char *field_name = relation_attr.attribute_name;
+      if (0 == strcmp(relation_attr.attribute_name, "*") && aggr_type != AGGR_NONE && aggr_type != AGGR_COUNT) {
+        return RC::GENERIC_ERROR;
+      } else if (0 == strcmp(relation_attr.attribute_name, "1") && aggr_type != AGGR_COUNT) {
+        return RC::GENERIC_ERROR;
+      }
+      if (i == 0) {
+        break;
+      }
+    }
 
-      if (0 == strcmp(table_name, "*")) {
-        if (0 != strcmp(field_name, "*")) {
-          LOG_WARN("invalid field name while table is *. attr=%s", field_name);
-          return RC::SCHEMA_FIELD_MISSING;
-        }
+    for (size_t i = select_sql.attr_num - 1;; i--) {
+      const RelAttr &relation_attr = select_sql.attributes[i];
+      auto aggr_type = relation_attr.aggr_type;
+
+      if (common::is_blank(relation_attr.relation_name) && 0 == strcmp(relation_attr.attribute_name, "*")) {
         if (aggr_type != AGGR_NONE) {
           const auto table = tables[0];
           const auto field_meta = table->table_meta().field(0);
@@ -147,95 +131,121 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
             wildcard_fields(table, query_fields);
           }
         }
-      } else {
-        auto iter = table_map.find(table_name);
-        if (iter == table_map.end()) {
-          LOG_WARN("no such table in from list: %s", table_name);
-          return RC::SCHEMA_FIELD_MISSING;
-        }
+      } else if (!common::is_blank(relation_attr.relation_name)) {  // TODO
+        const char *table_name = relation_attr.relation_name;
+        const char *field_name = relation_attr.attribute_name;
 
-        Table *table = iter->second;
-        if (0 == strcmp(field_name, "*")) {
+        if (0 == strcmp(table_name, "*")) {
+          if (0 != strcmp(field_name, "*")) {
+            LOG_WARN("invalid field name while table is *. attr=%s", field_name);
+            return RC::SCHEMA_FIELD_MISSING;
+          }
           if (aggr_type != AGGR_NONE) {
+            const auto table = tables[0];
             const auto field_meta = table->table_meta().field(0);
             query_fields.emplace_back(table, field_meta, aggr_type);
             aggr_fields.emplace_back(table, field_meta, aggr_type);
           } else {
-            wildcard_fields(table, query_fields);
+            for (Table *table : tables) {
+              wildcard_fields(table, query_fields);
+            }
           }
         } else {
-          const FieldMeta *field_meta = table->table_meta().field(field_name);
-          if (nullptr == field_meta) {
-            LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), field_name);
+          auto iter = table_map.find(table_name);
+          if (iter == table_map.end()) {
+            LOG_WARN("no such table in from list: %s", table_name);
             return RC::SCHEMA_FIELD_MISSING;
           }
 
-          query_fields.emplace_back(table, field_meta, aggr_type);
-          if (aggr_type != AGGR_NONE) {
-            aggr_fields.emplace_back(table, field_meta, aggr_type);
+          Table *table = iter->second;
+          if (0 == strcmp(field_name, "*")) {
+            if (aggr_type != AGGR_NONE) {
+              const auto field_meta = table->table_meta().field(0);
+              query_fields.emplace_back(table, field_meta, aggr_type);
+              aggr_fields.emplace_back(table, field_meta, aggr_type);
+            } else {
+              wildcard_fields(table, query_fields);
+            }
+          } else {
+            const FieldMeta *field_meta = table->table_meta().field(field_name);
+            if (nullptr == field_meta) {
+              LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), field_name);
+              return RC::SCHEMA_FIELD_MISSING;
+            }
+
+            query_fields.emplace_back(table, field_meta, aggr_type);
+            if (aggr_type != AGGR_NONE) {
+              aggr_fields.emplace_back(table, field_meta, aggr_type);
+            }
           }
         }
-      }
-    } else {
-      if (tables.size() != 1) {
-        LOG_WARN("invalid. I do not know the attr's table. attr=%s", relation_attr.attribute_name);
-        return RC::SCHEMA_FIELD_MISSING;
-      }
+      } else {
+        if (tables.size() != 1) {
+          LOG_WARN("invalid. I do not know the attr's table. attr=%s", relation_attr.attribute_name);
+          return RC::SCHEMA_FIELD_MISSING;
+        }
 
-      Table *table = tables[0];
-      const FieldMeta *field_meta = table->table_meta().field(relation_attr.attribute_name);
-      if (nullptr == field_meta) {
-        LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), relation_attr.attribute_name);
-        return RC::SCHEMA_FIELD_MISSING;
-      }
+        Table *table = tables[0];
+        const FieldMeta *field_meta = table->table_meta().field(relation_attr.attribute_name);
+        if (nullptr == field_meta) {
+          LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), relation_attr.attribute_name);
+          return RC::SCHEMA_FIELD_MISSING;
+        }
 
-      query_fields.emplace_back(table, field_meta, aggr_type);
-      if (aggr_type != AGGR_NONE) {
-        aggr_fields.emplace_back(table, field_meta, aggr_type);
+        query_fields.emplace_back(table, field_meta, aggr_type);
+        if (aggr_type != AGGR_NONE) {
+          aggr_fields.emplace_back(table, field_meta, aggr_type);
+        }
       }
-    }
-    if (i == 0) {
-      break;
+      if (i == 0) {
+        break;
+      }
     }
   }
 
   std::vector<Expression *> express;
   std::vector<char *> select_expr_alias;  // select_expr_alias给单表用的
-  for (size_t i = select_sql.expr_num - 1;; i--) {
-    if (select_sql.exprs[i].expr_type == EXPR_ATTR) {
-      if (common::is_blank(select_sql.exprs[i].attr.relation_name) &&
-          0 == strcmp(select_sql.exprs[i].attr.attribute_name, "*")) {  //*
-        if (select_sql.exprs[i].attr.aggr_type == AGGR_COUNT) {
-          express.emplace_back(new FieldExpr(tables[0], tables[0]->table_meta().field(0), AGGR_COUNT));
-          select_expr_alias.emplace_back(select_sql.select_expr_alias[i]);
-        } else {
-          for (Table *table : tables) {
+  if (select_sql.expr_num > 0) {
+    for (size_t i = select_sql.expr_num - 1;; i--) {
+      if (select_sql.exprs[i].expr_type == EXPR_ATTR) {
+        if (common::is_blank(select_sql.exprs[i].attr.relation_name) &&
+            0 == strcmp(select_sql.exprs[i].attr.attribute_name, "*")) {  //*
+          if (select_sql.exprs[i].attr.aggr_type == AGGR_COUNT) {
+            express.emplace_back(new FieldExpr(tables[0], tables[0]->table_meta().field(0), AGGR_COUNT));
+            select_expr_alias.emplace_back(select_sql.select_expr_alias[i]);
+          } else {
+            for (Table *table : tables) {
+              wildcard_expr(table, express, db, table_map, select_expr_alias);
+            }
+          }
+        } else if ((!common::is_blank(select_sql.exprs[i].attr.relation_name)) &&
+                   0 == strcmp(select_sql.exprs[i].attr.attribute_name, "*")) {  // t.*
+          auto table = table_map[select_sql.exprs[i].attr.relation_name];
+          // TODO: check relation_name
+          if (select_sql.exprs[i].attr.aggr_type == AGGR_COUNT) {
+            express.emplace_back(new FieldExpr(table, table->table_meta().field(0), AGGR_COUNT));
+            select_expr_alias.emplace_back(select_sql.select_expr_alias[i]);
+          } else {
             wildcard_expr(table, express, db, table_map, select_expr_alias);
           }
-        }
-      } else if ((!common::is_blank(select_sql.exprs[i].attr.relation_name)) &&
-                 0 == strcmp(select_sql.exprs[i].attr.attribute_name, "*")) {  // t.*
-        auto table = table_map[select_sql.exprs[i].attr.relation_name];
-        // TODO: check relation_name
-        if (select_sql.exprs[i].attr.aggr_type == AGGR_COUNT) {
-          express.emplace_back(new FieldExpr(table, table->table_meta().field(0), AGGR_COUNT));
-          select_expr_alias.emplace_back(select_sql.select_expr_alias[i]);
         } else {
-          wildcard_expr(table, express, db, table_map, select_expr_alias);
+          express.emplace_back(ExpressionFactory::NewExpression(select_sql.exprs[i], db, tables[0], &table_map));
+          select_expr_alias.emplace_back(select_sql.select_expr_alias[i]);
         }
       } else {
-        express.emplace_back(ExpressionFactory::NewExpression(select_sql.exprs[i], db, tables[0], &table_map));
+        if (tables.size() > 0) {
+          express.emplace_back(ExpressionFactory::NewExpression(select_sql.exprs[i], db, tables[0], &table_map));
+        } else {
+          express.emplace_back(ExpressionFactory::NewExpression(select_sql.exprs[i], db, nullptr, &table_map));
+        }
+
         select_expr_alias.emplace_back(select_sql.select_expr_alias[i]);
       }
-    } else {
-      express.emplace_back(ExpressionFactory::NewExpression(select_sql.exprs[i], db, tables[0], &table_map));
-      select_expr_alias.emplace_back(select_sql.select_expr_alias[i]);
-    }
-    if (i == 0) {
-      break;
+      if (i == 0) {
+        break;
+      }
     }
   }
-
   // collect group by field in `select` statement
   std::vector<Field> group_by_fields;
   if (select_sql.group_num > 0) {

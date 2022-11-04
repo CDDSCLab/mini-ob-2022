@@ -123,13 +123,17 @@ public:
 
   RC get_value(const Tuple &tuple, TupleCell &cell) const override
   {
+    // if (left_expr_->type() == EXPR_VALUE && type_ >= EXPR_LENGTH && type_ <= EXPR_DATE_FORMAT) {
+    //   /* code */
+    // }
+
     RC rc = RC::SUCCESS;
     TupleCell left_cell;
     TupleCell right_cell;
     if (type_ >= EXPR_PLUS && type_ <= EXPR_DIVIDE) {
       left_expr_->get_value(tuple, left_cell);
       right_expr_->get_value(tuple, right_cell);
-    } else if (type_ == EXPR_NEGATIVE) {
+    } else if (type_ == EXPR_NEGATIVE || type_ == EXPR_LENGTH) {
       left_expr_->get_value(tuple, left_cell);
     } else {
       return RC::GENERIC_ERROR;
@@ -137,10 +141,14 @@ public:
     if (left_cell.attr_type() == NULLS || right_cell.attr_type() == NULLS) {
       cell = {NULLS, nullptr};
       return rc;
-    } else if (left_cell.attr_type() == UNDEFINED || right_cell.attr_type() == UNDEFINED) {
+    } else if (left_cell.attr_type() == UNDEFINED) {
+      cell = {UNDEFINED, nullptr};
+      return rc;
+    } else if ((type_ != EXPR_NEGATIVE) && (type_ != EXPR_LENGTH) && (right_cell.attr_type() == UNDEFINED)) {
       cell = {UNDEFINED, nullptr};
       return rc;
     }
+
     switch (type_) {
       case EXPR_PLUS: {
         cell = TupleCellOperator::Plus(left_cell, right_cell);
@@ -161,7 +169,7 @@ public:
         if (left_cell.attr_type() != CHARS) {
           return RC::GENERIC_ERROR;
         }
-        // cell = TupleCellOperator::Length(left_cell);
+        cell = TupleCellOperator::Length(left_cell);
       } break;
       case EXPR_ROUND: {
         if (left_cell.attr_type() != FLOATS) {
@@ -188,6 +196,13 @@ public:
   void get_alias(std::ostream &os) override
   {
     if (type_ == EXPR_NONE || type_ == EXPR_SELECT) {
+      return;
+    }
+
+    if (type_ == EXPR_LENGTH) {
+      os << "length('";
+      left_expr_->get_alias(os);
+      os << "')";
       return;
     }
 

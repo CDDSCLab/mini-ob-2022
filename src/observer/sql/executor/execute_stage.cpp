@@ -418,7 +418,7 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   SessionEvent *session_event = sql_event->session_event();
   RC rc = RC::SUCCESS;
   // >= 2 tables
-  if (select_stmt->tables().size() != 1) {
+  if (select_stmt->tables().size() > 1) {
     std::vector<TableScanOperator *> scan_ops;
     std::vector<PredicateOperator> pred_ops;
     std::vector<JoinOperator> join_ops;
@@ -504,82 +504,106 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
     }
     session_event->set_response(ss.str());
     return rc;
-  }
+  } else if (select_stmt->tables().size() == 1) {
+    Operator *scan_oper = new TableScanOperator(select_stmt->tables()[0]);
 
-  Operator *scan_oper = new TableScanOperator(select_stmt->tables()[0]);
+    DEFER([&]() { delete scan_oper; });
 
-  DEFER([&]() { delete scan_oper; });
-
-  PredicateOperator pred_oper(select_stmt->filter_stmt());
-  PredicateOperator having_pred_oper(select_stmt->having_stmt());
-  pred_oper.add_child(scan_oper);
-  AggregationOperator aggr_oper(select_stmt->aggr_fields(), select_stmt->group_by_fields());
-  ProjectOperator project_oper;
-  //  for (const Field &field : select_stmt->query_fields()) {
-  //    project_oper.add_projection(field.table(), field.meta(), field.aggr_type());
-  //  }
-  for (size_t i = 0; i < select_stmt->express().size(); i++) {
-    project_oper.add_projection(select_stmt->express()[i], false, select_stmt->select_expr_alias()[i]);
-  }
-  if (select_stmt->aggr_fields().empty()) {
-    project_oper.add_child(&pred_oper);
-  } else {
-    if (select_stmt->having_stmt() != nullptr) {
-      aggr_oper.add_child(&pred_oper);
-      having_pred_oper.add_child(&aggr_oper);
-      project_oper.add_child(&having_pred_oper);
-    } else {
-      aggr_oper.add_child(&pred_oper);
-      project_oper.add_child(&aggr_oper);
+    PredicateOperator pred_oper(select_stmt->filter_stmt());
+    PredicateOperator having_pred_oper(select_stmt->having_stmt());
+    pred_oper.add_child(scan_oper);
+    AggregationOperator aggr_oper(select_stmt->aggr_fields(), select_stmt->group_by_fields());
+    ProjectOperator project_oper;
+    //  for (const Field &field : select_stmt->query_fields()) {
+    //    project_oper.add_projection(field.table(), field.meta(), field.aggr_type());
+    //  }
+    for (size_t i = 0; i < select_stmt->express().size(); i++) {
+      project_oper.add_projection(select_stmt->express()[i], false, select_stmt->select_expr_alias()[i]);
     }
-  }
-
-  rc = project_oper.open();
-  if (rc != RC::SUCCESS) {
-    LOG_WARN("failed to open operator");
-    return rc;
-  }
-
-  std::stringstream ss;
-  print_tuple_header(ss, project_oper);
-  std::vector<std::vector<TupleCell>> result_tuples;
-  while ((rc = project_oper.next()) == RC::SUCCESS) {
-    // get current record
-    // write to response
-    Tuple *tuple = project_oper.current_tuple();
-    if (nullptr == tuple) {
-      rc = RC::INTERNAL;
-      LOG_WARN("failed to get current record. rc=%s", strrc(rc));
-      break;
-    }
-    if (select_stmt->order_by_fields().size() == 0) {
-      tuple_to_string(ss, *tuple);
-      ss << std::endl;
+    if (select_stmt->aggr_fields().empty()) {
+      project_oper.add_child(&pred_oper);
     } else {
-      std::vector<TupleCell> result_tuple;
-      for (size_t i = 0; i < tuple->cell_num(); i++) {
-        TupleCell tmp;
-        tuple->cell_at(i, tmp);
-        result_tuple.emplace_back(tmp);
+      if (select_stmt->having_stmt() != nullptr) {
+        aggr_oper.add_child(&pred_oper);
+        having_pred_oper.add_child(&aggr_oper);
+        project_oper.add_child(&having_pred_oper);
+      } else {
+        aggr_oper.add_child(&pred_oper);
+        project_oper.add_child(&aggr_oper);
       }
-      result_tuples.emplace_back(result_tuple);
     }
-  }
 
-  if (select_stmt->order_by_fields().size() != 0) {
-    do_order_by_print(result_tuples, select_stmt->order_by_fields(), select_stmt->order_by_types(), ss, select_stmt);
-  }
+    rc = project_oper.open();
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("failed to open operator");
+      return rc;
+    }
 
-  if (rc != RC::RECORD_EOF) {
-    LOG_WARN("something wrong while iterate operator. rc=%s", strrc(rc));
-    session_event->set_response("FAILURE\n");
-    project_oper.close();
+    std::stringstream ss;
+    print_tuple_header(ss, project_oper);
+    std::vector<std::vector<TupleCell>> result_tuples;
+    while ((rc = project_oper.next()) == RC::SUCCESS) {
+      // get current record
+      // write to response
+      Tuple *tuple = project_oper.current_tuple();
+      if (nullptr == tuple) {
+        rc = RC::INTERNAL;
+        LOG_WARN("failed to get current record. rc=%s", strrc(rc));
+        break;
+      }
+      if (select_stmt->order_by_fields().size() == 0) {
+        tuple_to_string(ss, *tuple);
+        ss << std::endl;
+      } else {
+        std::vector<TupleCell> result_tuple;
+        for (size_t i = 0; i < tuple->cell_num(); i++) {
+          TupleCell tmp;
+          tuple->cell_at(i, tmp);
+          result_tuple.emplace_back(tmp);
+        }
+        result_tuples.emplace_back(result_tuple);
+      }
+    }
+
+    if (select_stmt->order_by_fields().size() != 0) {
+      do_order_by_print(result_tuples, select_stmt->order_by_fields(), select_stmt->order_by_types(), ss, select_stmt);
+    }
+
+    if (rc != RC::RECORD_EOF) {
+      LOG_WARN("something wrong while iterate operator. rc=%s", strrc(rc));
+      session_event->set_response("FAILURE\n");
+      project_oper.close();
+      return rc;
+    } else {
+      rc = project_oper.close();
+    }
+    session_event->set_response(ss.str());
     return rc;
   } else {
-    rc = project_oper.close();
+    std::stringstream ss;
+    for (size_t i = 0; i < select_stmt->express().size(); i++) {
+      auto expr = select_stmt->express()[i];
+      // print header
+      if (select_stmt->select_expr_alias()[i] != nullptr) {
+        ss << select_stmt->select_expr_alias()[i] << "\n";
+      } else {
+        expr->get_alias(ss);
+        ss << "\n";
+      }
+      // print tuples
+      Tuple *tuple = nullptr;
+      TupleCell cell;
+      if (expr->type() >= EXPR_LENGTH && expr->type() <= EXPR_DATE_FORMAT) {
+        expr->get_value(*tuple, cell);
+      } else {
+        return RC::GENERIC_ERROR;
+      }
+      cell.to_string(ss);
+      ss << "\n";
+    }
+
+    session_event->set_response(ss.str());
   }
-  session_event->set_response(ss.str());
-  return rc;
 }
 
 void ExecuteStage::clear_alias(SQLStageEvent *sql_event)
