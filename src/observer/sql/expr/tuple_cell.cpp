@@ -27,7 +27,7 @@ void TupleCell::to_string(std::ostream &os) const
     } break;
     case FLOATS: {
       float v = *(float *)data_;
-      os << double2string(v);
+      os << double2string(v, num_);
     } break;
     case CHARS: {
       for (int i = 0; i < length_; i++) {

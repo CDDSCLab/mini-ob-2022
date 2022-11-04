@@ -148,9 +148,9 @@ public:
       num++;
     }
     Value value;
-    value_init_string(&value, double2string(left, right).c_str());
-    TupleCell re = {CHARS, static_cast<char *>(value.data)};
-    re.set_length(right + num + 2);
+    value_init_float(&value, atof(double2string(left, right).c_str()));
+    TupleCell re = {FLOATS, static_cast<char *>(value.data)};
+    re.set_num(right);
     return re;
   }
 
@@ -161,9 +161,9 @@ public:
     std::stringstream ss;
     ss << result;
     Value value;
-    value_init_string(&value, ss.str().c_str());
-    TupleCell re = {CHARS, static_cast<char *>(value.data)};
-    re.set_length((result / 10) + 2);
+    value_init_float(&value, atof(double2string(left, 2).c_str()));
+    TupleCell re = {FLOATS, static_cast<char *>(value.data)};
+    re.set_num(0);
     return re;
   }
 
