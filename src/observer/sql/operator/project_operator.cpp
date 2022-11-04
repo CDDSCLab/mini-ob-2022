@@ -111,7 +111,11 @@ void ProjectOperator::add_projection(Expression *expr, bool show_table_name, cha
       ss << aggr_type_to_string(field.aggr_type()) << "(";
     }
     if (show_table_name) {
-      ss << field.table_name() << ".";
+      if (field.table()->alias() != nullptr) {
+        ss << field.table()->alias() << ".";
+      } else {
+        ss << field.table_name() << ".";
+      }
     }
     if (0 == strcmp(field.field_name(), "__trx")) {
       // For COUNT(*).

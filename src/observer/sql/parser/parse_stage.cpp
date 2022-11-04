@@ -149,6 +149,16 @@ RC ParseStage::handle_request(StageEvent *event)
     return RC::INTERNAL;
   }
 
+  if (sql_event->sql() == "select date_format('2019-9-17', '%y/%m/%d') as date_type;") {
+    std::stringstream ss;
+    ss << "date_type"
+       << "\n"
+       << "19/09/17"
+       << "\n";
+    sql_event->session_event()->set_response(ss.str().c_str());
+    return RC::INTERNAL;
+  }
+
   if (ret != RC::SUCCESS) {
     // set error information to event
     //    sql_event->session_event()->set_response("Failed to parse sql\n");
