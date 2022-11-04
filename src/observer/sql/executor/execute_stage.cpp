@@ -581,16 +581,27 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
     return rc;
   } else {
     std::stringstream ss;
+    // print header
     for (size_t i = 0; i < select_stmt->express().size(); i++) {
       auto expr = select_stmt->express()[i];
-      // print header
+      if (i != 0) {
+        ss << " | ";
+      }
+
       if (select_stmt->select_expr_alias()[i] != nullptr) {
-        ss << select_stmt->select_expr_alias()[i] << "\n";
+        ss << select_stmt->select_expr_alias()[i];
       } else {
         expr->get_alias(ss);
-        ss << "\n";
       }
-      // print tuples
+    }
+    ss << std::endl;
+
+    // print tuples
+    for (size_t i = 0; i < select_stmt->express().size(); i++) {
+      if (i != 0) {
+        ss << " | ";
+      }
+      auto expr = select_stmt->express()[i];
       Tuple *tuple = nullptr;
       TupleCell cell;
       if (expr->type() >= EXPR_LENGTH && expr->type() <= EXPR_DATE_FORMAT) {
@@ -599,8 +610,8 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
         return RC::GENERIC_ERROR;
       }
       cell.to_string(ss);
-      ss << "\n";
     }
+    ss << std::endl;
 
     session_event->set_response(ss.str());
   }

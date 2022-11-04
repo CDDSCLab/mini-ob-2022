@@ -108,7 +108,9 @@ public:
     if (cell.attr_type() != CHARS) {
       return {UNDEFINED, nullptr};
     }
-    int result = cell.length();
+    std::stringstream ss;
+    cell.to_string(ss);
+    int result = ss.str().size();
     Value value;
     value_init_integer(&value, result);
     return {INTS, static_cast<char *>(value.data)};

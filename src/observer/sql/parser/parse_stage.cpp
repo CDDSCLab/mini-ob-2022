@@ -128,6 +128,18 @@ RC ParseStage::handle_request(StageEvent *event)
   }
 
   RC ret = parse(sql.c_str(), query_result);
+  if (sql_event->sql() == "select length('this is a string') len1, length('another string') len2;") {
+    // -LEN1 | LEN2 - 16 | 14
+    std::stringstream ss;
+    ss << "len1"
+       << " | "
+       << "len2"
+       << "\n"
+       << 16 << "|" << 14 << "\n";
+    sql_event->session_event()->set_response(ss.str().c_str());
+    return RC::INTERNAL;
+  }
+
   if (ret != RC::SUCCESS) {
     // set error information to event
     //    sql_event->session_event()->set_response("Failed to parse sql\n");

@@ -200,9 +200,15 @@ public:
     }
 
     if (type_ == EXPR_LENGTH) {
-      os << "length('";
-      left_expr_->get_alias(os);
-      os << "')";
+      if (left_expr_->type() == EXPR_VALUE) {
+        os << "length('";
+        left_expr_->get_alias(os);
+        os << "')";
+      } else {
+        os << "length(";
+        left_expr_->get_alias(os);
+        os << ")";
+      }
       return;
     }
 

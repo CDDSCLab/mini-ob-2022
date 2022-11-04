@@ -496,17 +496,8 @@ select:				/*  select 语句的语法解析树*/
         CONTEXT->ssql->sstr.selection = CONTEXT->selects[1];
     };
 select_unit:
-    select_begin func_attr alias {
+    select_begin func_attr alias func_attr_list {
         selects_append_expr(&CONTEXT->selects[CONTEXT->select_length], $2, $3);
-
-        // 临时变量清零
-        CONTEXT->condition_length[CONTEXT->select_length] = 0;
-        CONTEXT->value_length = 0;
-        $$ = &CONTEXT->selects[CONTEXT->select_length--];
-    }
-    | select_begin func_attr alias FROM ID{
-        selects_append_expr(&CONTEXT->selects[CONTEXT->select_length], $2, $3);
-        selects_append_relation(&CONTEXT->selects[CONTEXT->select_length], $5, NULL);
 
         // 临时变量清零
         CONTEXT->condition_length[CONTEXT->select_length] = 0;
@@ -522,6 +513,12 @@ select_unit:
         CONTEXT->value_length = 0;
         $$ = &CONTEXT->selects[CONTEXT->select_length--];
     };
+
+func_attr_list:
+    | COMMA func_attr alias func_attr_list{
+        selects_append_expr(&CONTEXT->selects[CONTEXT->select_length], $2, $3);
+    }
+    ;
 
 func_attr:
 	  func_type_1 LBRACE primary_expr RBRACE {
@@ -557,7 +554,10 @@ select_begin:
     SELECT { CONTEXT->select_length++; }
     ;
 select_attr:
-     STAR select_attr_list {
+    func_attr alias select_attr_list{
+        selects_append_expr(&CONTEXT->selects[CONTEXT->select_length], $1, $2);
+    }
+    | STAR select_attr_list {
         RelAttr attr;
         relation_attr_init(&attr, NULL, "*");
         expr_init_attr(&CONTEXT->exprs[CONTEXT->expr_length], &attr);
@@ -569,6 +569,9 @@ select_attr:
 select_attr_list:
     /* empty */
     | COMMA expr alias select_attr_list {
+        selects_append_expr(&CONTEXT->selects[CONTEXT->select_length], $2, $3);
+    };
+    | COMMA func_attr alias select_attr_list {
         selects_append_expr(&CONTEXT->selects[CONTEXT->select_length], $2, $3);
     };
 expr:
