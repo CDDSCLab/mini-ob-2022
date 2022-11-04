@@ -127,7 +127,7 @@ public:
     return re;
   }
 
-  static inline TupleCell DateFormat(const TupleCell &cell)
+  static inline TupleCell DateFormat(const TupleCell &left_cell, const TupleCell &right_cell)
   {
     Value value;
     value_init_string(&value, "result");

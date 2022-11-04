@@ -181,7 +181,7 @@ public:
         if (left_cell.attr_type() != DATES) {
           return RC::GENERIC_ERROR;
         }
-        // cell = TupleCellOperator::DateFormat(left_cell, right_cell);
+        cell = TupleCellOperator::DateFormat(left_cell, right_cell);
       } break;
       case EXPR_NONE:
       case EXPR_VALUE:
@@ -203,6 +203,15 @@ public:
       os << "length('";
       left_expr_->get_alias(os);
       os << "')";
+      return;
+    }
+
+    if (type_ == EXPR_ROUND) {
+      os << "round(";
+      left_expr_->get_alias(os);
+      os << ",";
+      right_expr_->get_alias(os);
+      os << ")";
       return;
     }
 
