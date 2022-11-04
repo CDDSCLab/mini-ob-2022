@@ -472,16 +472,20 @@ update_attr:
     ID EQ value update_attr_list {
 		updates_append_attr(&CONTEXT->ssql->sstr.update, $1, $3);
     }
-    | ID EQ LBRACE select_unit RBRACE update_attr_list {
-        updates_append_select(&CONTEXT->ssql->sstr.update, $1, $4);
+    | update_unit update_attr_list {
+
     };
 update_attr_list:
     /* empty */
     | COMMA ID EQ value update_attr_list {
         updates_append_attr(&CONTEXT->ssql->sstr.update, $2, $4);
     }
-    | COMMA ID EQ LBRACE select_unit RBRACE update_attr_list {
-        updates_append_select(&CONTEXT->ssql->sstr.update, $2, $5);
+    | COMMA update_unit update_attr_list {
+
+    };
+update_unit:
+    ID EQ LBRACE select_unit RBRACE {
+        updates_append_select(&CONTEXT->ssql->sstr.update, $1, $4);
     };
 
 select:				/*  select 语句的语法解析树*/
@@ -514,7 +518,10 @@ alias:
     ;
 
 select_begin:
-    SELECT { CONTEXT->select_length++; }
+    SELECT {
+        CONTEXT->select_length++;
+        memset(&CONTEXT->selects[CONTEXT->select_length], 0, sizeof(Selects));
+    }
     ;
 select_attr:
      STAR select_attr_list {

@@ -107,6 +107,25 @@ void expr_init_expr(Expr *expr, ExprType expr_type, Expr *left_expr, Expr *right
     *expr->right = *right_expr;
   }
 }
+int expr_select_num(Expr *expr)
+{
+  switch (expr->expr_type) {
+    case EXPR_VALUE:
+    case EXPR_ATTR:
+    case EXPR_NONE:
+      return 0;
+    case EXPR_SELECT:
+      return 1;
+    case EXPR_NEGATIVE:
+    case EXPR_BRACE:
+      return expr_select_num(expr->left);
+    case EXPR_PLUS:
+    case EXPR_MINUS:
+    case EXPR_MULTIPLY:
+    case EXPR_DIVIDE:
+      return expr_select_num(expr->left) + expr_select_num(expr->right);
+  }
+}
 void expr_destroy(Expr *expr)
 {
   if (expr == nullptr) {
