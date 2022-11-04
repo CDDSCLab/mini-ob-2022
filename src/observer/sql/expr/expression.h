@@ -29,7 +29,7 @@ public:
 
   virtual RC get_value(const Tuple &tuple, TupleCell &cell) const = 0;
   virtual ExprType type() const = 0;
-  virtual void get_alias(std::ostream &os) = 0;
+  virtual void get_alias(std::ostream &os, bool show_table_name) = 0;
 };
 
 class FieldExpr : public Expression {
@@ -65,10 +65,12 @@ public:
     return field_.field_name();
   }
 
-  void get_alias(std::ostream &os) override
+  void get_alias(std::ostream &os, bool show_table_name) override
   {
+    if (show_table_name) {
+      os << field_.table_name() << ".";
+    }
     os << field_.field_name();
-    return;
   }
 
   RC get_value(const Tuple &tuple, TupleCell &cell) const override;
@@ -100,10 +102,9 @@ public:
     cell = tuple_cell_;
   }
 
-  void get_alias(std::ostream &os) override
+  void get_alias(std::ostream &os, bool show_table_name) override
   {
     tuple_cell_.to_string(os);
-    return;
   }
 
 private:
@@ -173,7 +174,7 @@ public:
     return rc;
   }
 
-  void get_alias(std::ostream &os) override
+  void get_alias(std::ostream &os, bool show_table_name) override
   {
     if (type_ == EXPR_NONE || type_ == EXPR_SELECT) {
       return;
@@ -181,18 +182,18 @@ public:
 
     if (type_ == EXPR_BRACE) {
       os << "(";
-      left_expr_->get_alias(os);
+      left_expr_->get_alias(os, show_table_name);
       os << ")";
       return;
     }
 
     if (type_ == EXPR_NEGATIVE) {
       os << "-";
-      left_expr_->get_alias(os);
+      left_expr_->get_alias(os, show_table_name);
       return;
     }
 
-    left_expr_->get_alias(os);
+    left_expr_->get_alias(os, show_table_name);
 
     switch (type_) {
       case EXPR_PLUS: {
@@ -217,12 +218,11 @@ public:
 
     if (right_expr_->type() == EXPR_NEGATIVE) {
       os << "(";
-      right_expr_->get_alias(os);
+      right_expr_->get_alias(os, show_table_name);
       os << ")";
     } else {
-      right_expr_->get_alias(os);
+      right_expr_->get_alias(os, show_table_name);
     }
-    return;
   }
 
 private:
@@ -249,7 +249,7 @@ public:
 
   RC has_value(const Tuple &tuple, bool *result);
 
-  void get_alias(std::ostream &os) override
+  void get_alias(std::ostream &os, bool show_table_name) override
   {
     return;
   }

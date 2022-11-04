@@ -124,7 +124,7 @@ void ProjectOperator::add_projection(Expression *expr, bool show_table_name, cha
     }
     spec->set_alias(strdup(ss.str().c_str()));
   } else {
-    expr->get_alias(ss);
+    expr->get_alias(ss, show_table_name);
     spec->set_alias(strdup(ss.str().c_str()));
   }
 
