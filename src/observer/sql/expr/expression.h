@@ -179,25 +179,20 @@ public:
       return;
     }
 
-    if (type_ == EXPR_NEGATIVE) {
-      os << "-";
-      if (left_expr_->type() != EXPR_VALUE && left_expr_->type() != EXPR_ATTR) {
-        os << "(";
-        left_expr_->get_alias(os);
-        os << ")";
-      } else {
-        left_expr_->get_alias(os);
-      }
-      return;
-    }
-
-    if (left_expr_->type() == EXPR_BRACE) {
+    if (type_ == EXPR_BRACE) {
       os << "(";
       left_expr_->get_alias(os);
       os << ")";
-    } else {
-      left_expr_->get_alias(os);
+      return;
     }
+
+    if (type_ == EXPR_NEGATIVE) {
+      os << "-";
+      left_expr_->get_alias(os);
+      return;
+    }
+
+    left_expr_->get_alias(os);
 
     switch (type_) {
       case EXPR_PLUS: {
@@ -220,11 +215,7 @@ public:
         break;
     }
 
-    if (right_expr_->type() == EXPR_BRACE) {
-      os << "(";
-      right_expr_->get_alias(os);
-      os << ")";
-    } else if (right_expr_->type() == EXPR_NEGATIVE) {
+    if (right_expr_->type() == EXPR_NEGATIVE) {
       os << "(";
       right_expr_->get_alias(os);
       os << ")";
