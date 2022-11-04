@@ -101,7 +101,8 @@ void expr_init_attr(Expr *expr, RelAttr *relation_attr)
 void expr_init_select(Expr *expr, Selects *selects)
 {
   expr->expr_type = EXPR_SELECT;
-  expr->select = selects;
+  expr->select = (Selects *)malloc(sizeof(Selects));
+  *expr->select = *selects;
 }
 void expr_init_expr(Expr *expr, ExprType expr_type, Expr *left_expr, Expr *right_expr)
 {
