@@ -529,6 +529,10 @@ func_attr:
 		expr_init_expr(&CONTEXT->exprs[CONTEXT->expr_length], $1, $3, $5);
 		$$ = &CONTEXT->exprs[CONTEXT->expr_length++];
 	}
+    | func_type_2 LBRACE primary_expr RBRACE {
+		expr_init_expr(&CONTEXT->exprs[CONTEXT->expr_length], $1, $3, NULL);
+		$$ = &CONTEXT->exprs[CONTEXT->expr_length++];
+	}
     ;
 func_type_1:
 	   LENGTH { $$ = EXPR_LENGTH; };

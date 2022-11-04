@@ -23,7 +23,15 @@ public:
       case EXPR_MINUS:
       case EXPR_MULTIPLY:
       case EXPR_DIVIDE:
-      case EXPR_ROUND:
+      case EXPR_ROUND: {
+        if (expr.right->expr_type != EXPR_VALUE) {
+          return new ExprExpr(expr.expr_type, NewExpression(*expr.left, db, default_table, tables), nullptr);
+        } else {
+          return new ExprExpr(expr.expr_type,
+              NewExpression(*expr.left, db, default_table, tables),
+              NewExpression(*expr.right, db, default_table, tables));
+        }
+      }
       case EXPR_DATE_FORMAT:
         return new ExprExpr(expr.expr_type,
             NewExpression(*expr.left, db, default_table, tables),

@@ -126,7 +126,20 @@ public:
     Value value;
     value_init_string(&value, ss.str().c_str());
     TupleCell re = {CHARS, static_cast<char *>(value.data)};
-    re.set_length(right + 2);
+    re.set_length(right + (result / 10) + 2);
+    return re;
+  }
+
+  static inline TupleCell Round_default(const TupleCell &left_cell)
+  {
+    float left = TupleCellToFloat(left_cell);
+    float result = std::round(left);
+    std::stringstream ss;
+    ss << result;
+    Value value;
+    value_init_string(&value, ss.str().c_str());
+    TupleCell re = {CHARS, static_cast<char *>(value.data)};
+    re.set_length((result / 10) + 2);
     return re;
   }
 

@@ -132,7 +132,9 @@ public:
     TupleCell right_cell;
     if ((type_ >= EXPR_PLUS && type_ <= EXPR_DIVIDE) || type_ == EXPR_ROUND || type_ == EXPR_DATE_FORMAT) {
       left_expr_->get_value(tuple, left_cell);
-      right_expr_->get_value(tuple, right_cell);
+      if (right_expr_ != nullptr && right_expr_->type() == EXPR_VALUE) {
+        right_expr_->get_value(tuple, right_cell);
+      }
     } else if (type_ == EXPR_NEGATIVE || type_ == EXPR_LENGTH) {
       left_expr_->get_value(tuple, left_cell);
     } else {
@@ -144,7 +146,8 @@ public:
     } else if (left_cell.attr_type() == UNDEFINED) {
       cell = {UNDEFINED, nullptr};
       return rc;
-    } else if ((type_ != EXPR_NEGATIVE) && (type_ != EXPR_LENGTH) && (right_cell.attr_type() == UNDEFINED)) {
+    } else if ((type_ != EXPR_NEGATIVE) && (type_ != EXPR_LENGTH) && (type_ != EXPR_ROUND) &&
+               (right_cell.attr_type() == UNDEFINED)) {
       cell = {UNDEFINED, nullptr};
       return rc;
     }
@@ -172,10 +175,15 @@ public:
         cell = TupleCellOperator::Length(left_cell);
       } break;
       case EXPR_ROUND: {
-        if (left_cell.attr_type() != FLOATS || right_cell.attr_type() != INTS) {
-          return RC::GENERIC_ERROR;
+        // if (left_cell.attr_type() != FLOATS || right_cell.attr_type() != INTS) {
+        //   return RC::GENERIC_ERROR;
+        // }
+        if (right_expr_ != nullptr && right_expr_->type() == EXPR_VALUE) {
+          cell = TupleCellOperator::Round(left_cell, right_cell);
+        } else {
+          cell = TupleCellOperator::Round_default(left_cell);
         }
-        cell = TupleCellOperator::Round(left_cell, right_cell);
+
       } break;
       case EXPR_DATE_FORMAT: {
         if (left_cell.attr_type() != DATES) {
@@ -215,8 +223,11 @@ public:
     if (type_ == EXPR_ROUND) {
       os << "round(";
       left_expr_->get_alias(os);
-      os << ", ";
-      right_expr_->get_alias(os);
+      if (right_expr_ != nullptr && right_expr_->type() == EXPR_VALUE) {
+        os << ", ";
+        right_expr_->get_alias(os);
+      }
+
       os << ")";
       return;
     }
