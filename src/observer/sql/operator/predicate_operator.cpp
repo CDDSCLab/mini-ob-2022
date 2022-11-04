@@ -112,7 +112,7 @@ RC PredicateOperator::do_predicate(RowTuple &tuple, bool *result)
         return rc;
       }
       for (const auto cell : cells) {
-        if (cell.compare(left_cell) == 0) {
+        if (cell.attr_type() == NULLS || cell.compare(left_cell) == 0) {
           filter_result = false;
           break;
         }
