@@ -591,7 +591,7 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
       if (select_stmt->select_expr_alias()[i] != nullptr) {
         ss << select_stmt->select_expr_alias()[i];
       } else {
-        expr->get_alias(ss);
+        expr->get_alias(ss, false);
       }
     }
     ss << std::endl;

@@ -7,7 +7,7 @@
 #include <cfloat>
 #include "sql/expr/tuple_cell.h"
 #include <sstream>
-#include <math.h>
+#include <cmath>
 #include "util/util.h"
 
 class TupleCellOperator {
