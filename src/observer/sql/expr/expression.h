@@ -18,6 +18,7 @@ See the Mulan PSL v2 for more details. */
 #include "storage/common/field.h"
 #include "sql/expr/tuple_cell.h"
 #include "sql/expr/tuple_cell_operator.h"
+#include "util/util.h"
 
 class Tuple;
 class ProjectOperator;
@@ -67,10 +68,16 @@ public:
 
   void get_alias(std::ostream &os, bool show_table_name) override
   {
+    if (field_.aggr_type() != AGGR_NONE) {
+      os << aggr_type_to_string(field_.aggr_type()) << "(";
+    }
     if (show_table_name) {
       os << field_.table_name() << ".";
     }
     os << field_.field_name();
+    if (field_.aggr_type() != AGGR_NONE) {
+      os << ")";
+    }
   }
 
   RC get_value(const Tuple &tuple, TupleCell &cell) const override;
