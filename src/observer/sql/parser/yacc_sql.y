@@ -699,6 +699,18 @@ condition:
         condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
                 $2, $1, $3);
     }
+    |func_attr comOp func_attr {
+        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
+                $2, $1, $3);
+    }
+    |func_attr comOp expr {
+        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
+                $2, $1, $3);
+    }
+    |expr comOp func_attr {
+        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
+                $2, $1, $3);
+    }
     | expr IN LBRACE select_unit RBRACE  {
         expr_init_select(&CONTEXT->exprs[CONTEXT->expr_length], $4);
         condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]],

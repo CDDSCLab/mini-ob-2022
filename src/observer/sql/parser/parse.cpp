@@ -129,8 +129,10 @@ void expr_destroy(Expr *expr)
     case EXPR_ATTR: {
       relation_attr_destroy(&expr->attr);
     } break;
-    case EXPR_SELECT: {
-      // TODO(yueyang): destroy select.
+    case EXPR_SELECT:
+    case EXPR_LENGTH:
+    case EXPR_ROUND:
+    case EXPR_DATE_FORMAT: {
     } break;
     case EXPR_NONE:
     default: {
