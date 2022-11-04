@@ -27,6 +27,7 @@ public:
             NewExpression(*expr.left, db, default_table, tables),
             NewExpression(*expr.right, db, default_table, tables));
       case EXPR_NEGATIVE:
+      case EXPR_BRACE:
         return new ExprExpr(expr.expr_type, NewExpression(*expr.left, db, default_table, tables), nullptr);
       case EXPR_VALUE:
         return new ValueExpr(expr.value);

@@ -120,7 +120,8 @@ void expr_destroy(Expr *expr)
       expr_destroy(expr->left);
       expr_destroy(expr->right);
     } break;
-    case EXPR_NEGATIVE: {
+    case EXPR_NEGATIVE:
+    case EXPR_BRACE: {
       expr_destroy(expr->left);
     } break;
     case EXPR_VALUE: {
@@ -166,7 +167,7 @@ void attr_info_destroy(AttrInfo *attr_info)
 }
 
 void selects_init(Selects *selects, ...);
-void selects_append_attribute(Selects *selects, RelAttr *rel_attr)
+void selects_append_attribute(Selects *selects, RelAttr *rel_attr)  // UNUSE
 {
   selects->attributes[selects->attr_num++] = *rel_attr;
 }
@@ -181,7 +182,7 @@ void selects_append_expr(Selects *selects, Expr *expr, const char *attr_alias)
   }
   selects_append_attr(selects, expr);
 }
-void selects_append_attr(Selects *selects, Expr *expr)
+void selects_append_attr(Selects *selects, Expr *expr)  // UNUSE
 {
   switch (expr->expr_type) {
     case EXPR_PLUS:

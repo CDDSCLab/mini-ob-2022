@@ -72,6 +72,7 @@ typedef enum {
   EXPR_VALUE,
   EXPR_ATTR,
   EXPR_SELECT,
+  EXPR_BRACE,
 } ExprType;
 
 typedef struct _Expr {

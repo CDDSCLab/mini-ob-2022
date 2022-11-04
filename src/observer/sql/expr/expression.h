@@ -131,6 +131,8 @@ public:
       right_expr_->get_value(tuple, right_cell);
     } else if (type_ == EXPR_NEGATIVE) {
       left_expr_->get_value(tuple, left_cell);
+    } else if (type_ == EXPR_BRACE) {
+      return left_expr_->get_value(tuple, cell);
     } else {
       return RC::GENERIC_ERROR;
     }
@@ -189,8 +191,7 @@ public:
       return;
     }
 
-    if ((left_expr_->type() == EXPR_PLUS || left_expr_->type() == EXPR_MINUS) &&
-        (type_ == EXPR_MULTIPLY || type_ == EXPR_DIVIDE)) {
+    if (left_expr_->type() == EXPR_BRACE) {
       os << "(";
       left_expr_->get_alias(os);
       os << ")";
@@ -219,8 +220,7 @@ public:
         break;
     }
 
-    if ((right_expr_->type() == EXPR_PLUS || right_expr_->type() == EXPR_MINUS) &&
-        (type_ == EXPR_MULTIPLY || type_ == EXPR_DIVIDE)) {
+    if (right_expr_->type() == EXPR_BRACE) {
       os << "(";
       right_expr_->get_alias(os);
       os << ")";

@@ -569,7 +569,8 @@ mul_expr:
     };
 primary_expr:
     LBRACE add_expr RBRACE {
-        $$ = $2;
+        expr_init_expr(&CONTEXT->exprs[CONTEXT->expr_length], EXPR_BRACE, $2, NULL);
+        $$ = &CONTEXT->exprs[CONTEXT->expr_length++];
     }
     | attr {
         expr_init_attr(&CONTEXT->exprs[CONTEXT->expr_length], $1);
