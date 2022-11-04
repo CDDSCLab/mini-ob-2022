@@ -18,10 +18,10 @@ typedef struct ParserContext {
   size_t attr_length;
   size_t expr_length;
   Value values[MAX_NUM];
-  size_t condition_length[MAX_NUM];
-  Condition conditions[MAX_NUM][MAX_NUM];
+  size_t condition_length[MAX_NUM / 2];
+  Condition conditions[MAX_NUM / 2][MAX_NUM / 2];
   RelAttr attrs[MAX_NUM];
-  Expr exprs[MAX_NUM * 10];
+  Expr exprs[MAX_NUM * 2];
   char id[MAX_NUM];
 
   // add by us
@@ -663,6 +663,14 @@ condition:
         condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
                 $2, $1, $3);
     }
+    | expr IN LBRACE condition_value condition_value_list RBRACE {
+        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
+                IN_OP, $1, &CONTEXT->exprs[CONTEXT->expr_length++]);
+    }
+    | expr NOT IN LBRACE condition_value condition_value_list RBRACE {
+        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
+                NOT_IN_OP, $1, &CONTEXT->exprs[CONTEXT->expr_length++]);
+    }
     | expr IN LBRACE select_unit RBRACE  {
         expr_init_select(&CONTEXT->exprs[CONTEXT->expr_length], $4);
         condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
@@ -718,6 +726,15 @@ null_comOp:
       IS NULL_TOKEN { $$ = IS_NULL; }
     | IS NOT NULL_TOKEN { $$ = IS_NOT_NULL; }
     ;
+condition_value:
+    value {
+        expr_append_value(&CONTEXT->exprs[CONTEXT->expr_length], $1);
+    };
+condition_value_list:
+    /* empty */
+    | COMMA condition_value condition_value_list {
+
+    };
 
 group_by:
     /* empty */

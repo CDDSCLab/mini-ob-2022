@@ -72,6 +72,7 @@ typedef enum {
   EXPR_VALUE,
   EXPR_ATTR,
   EXPR_SELECT,
+  EXPR_VALUES,
   EXPR_BRACE,
 } ExprType;
 
@@ -81,6 +82,8 @@ typedef struct _Expr {
   struct _Expr *right;
   Value value;
   RelAttr attr;
+  size_t value_num;
+  Value *values[MAX_NUM / 5];
   struct _Selects *select;
 } Expr;
 
@@ -261,6 +264,7 @@ void value_init_null(Value *value);
 void value_destroy(Value *value);
 
 void expr_init_value(Expr *expr, Value *value);
+void expr_append_value(Expr *expr, Value *value);
 void expr_init_attr(Expr *expr, RelAttr *relation_attr);
 void expr_init_select(Expr *expr, Selects *selects);
 void expr_init_expr(Expr *expr, ExprType expr_type, Expr *left_expr, Expr *right_expr);

@@ -86,7 +86,11 @@ RC PredicateOperator::do_predicate(RowTuple &tuple, bool *result)
     bool filter_result = false;
     if (comp == IN_OP) {
       std::vector<TupleCell> cells;
-      rc = dynamic_cast<SelectExpr *>(right_expr)->get_values(tuple, &cells);
+      if (right_expr->type() == EXPR_SELECT) {
+        rc = dynamic_cast<SelectExpr *>(right_expr)->get_values(tuple, &cells);
+      } else if (right_expr->type() == EXPR_VALUES) {
+        rc = dynamic_cast<ValuesExpr *>(right_expr)->get_values(tuple, &cells);
+      }
       if (rc != RC::SUCCESS) {
         return rc;
       }
@@ -99,7 +103,11 @@ RC PredicateOperator::do_predicate(RowTuple &tuple, bool *result)
       }
     } else if (comp == NOT_IN_OP) {
       std::vector<TupleCell> cells;
-      rc = dynamic_cast<SelectExpr *>(right_expr)->get_values(tuple, &cells);
+      if (right_expr->type() == EXPR_SELECT) {
+        rc = dynamic_cast<SelectExpr *>(right_expr)->get_values(tuple, &cells);
+      } else if (right_expr->type() == EXPR_VALUES) {
+        rc = dynamic_cast<ValuesExpr *>(right_expr)->get_values(tuple, &cells);
+      }
       if (rc != RC::SUCCESS) {
         return rc;
       }

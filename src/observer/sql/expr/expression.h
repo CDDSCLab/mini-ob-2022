@@ -168,6 +168,7 @@ public:
       case EXPR_VALUE:
       case EXPR_ATTR:
       case EXPR_SELECT:
+      case EXPR_VALUES:
       case EXPR_BRACE: {
         assert(false);
       } break;
@@ -257,4 +258,40 @@ public:
 
 private:
   ProjectOperator *project_oper_;
+};
+
+class ValuesExpr : public Expression {
+public:
+  ValuesExpr() = default;
+
+  ExprType type() const override
+  {
+    return EXPR_VALUES;
+  }
+
+  void add_value(Value *value)
+  {
+    values_.emplace_back(*value);
+  }
+
+  RC get_value(const Tuple &tuple, TupleCell &cell) const override
+  {
+    return GENERIC_ERROR;
+  }
+
+  RC get_values(const Tuple &tuple, std::vector<TupleCell> *cells)
+  {
+    for (const auto &value : values_) {
+      cells->emplace_back(value.type, (char *)value.data);
+    }
+    return RC::SUCCESS;
+  }
+
+  void get_alias(std::ostream &os, bool show_table_name) override
+  {
+    return;
+  }
+
+private:
+  std::vector<Value> values_;
 };

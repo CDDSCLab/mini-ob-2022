@@ -87,6 +87,12 @@ void expr_init_value(Expr *expr, Value *value)
   expr->expr_type = EXPR_VALUE;
   expr->value = *value;
 }
+void expr_append_value(Expr *expr, Value *value)
+{
+  expr->expr_type = EXPR_VALUES;
+  expr->values[expr->value_num] = (Value *)malloc(sizeof(Value));
+  *expr->values[expr->value_num++] = *value;
+}
 void expr_init_attr(Expr *expr, RelAttr *relation_attr)
 {
   expr->expr_type = EXPR_ATTR;
@@ -105,25 +111,6 @@ void expr_init_expr(Expr *expr, ExprType expr_type, Expr *left_expr, Expr *right
   *expr->left = *left_expr;
   if (right_expr != nullptr) {
     *expr->right = *right_expr;
-  }
-}
-int expr_select_num(Expr *expr)
-{
-  switch (expr->expr_type) {
-    case EXPR_VALUE:
-    case EXPR_ATTR:
-    case EXPR_NONE:
-      return 0;
-    case EXPR_SELECT:
-      return 1;
-    case EXPR_NEGATIVE:
-    case EXPR_BRACE:
-      return expr_select_num(expr->left);
-    case EXPR_PLUS:
-    case EXPR_MINUS:
-    case EXPR_MULTIPLY:
-    case EXPR_DIVIDE:
-      return expr_select_num(expr->left) + expr_select_num(expr->right);
   }
 }
 void expr_destroy(Expr *expr)
@@ -151,6 +138,11 @@ void expr_destroy(Expr *expr)
     } break;
     case EXPR_SELECT: {
       // TODO(yueyang): destroy select.
+    } break;
+    case EXPR_VALUES: {
+      for (int i = 0; i < expr->value_num; ++i) {
+        value_destroy(expr->values[i]);
+      }
     } break;
     case EXPR_NONE:
     default: {

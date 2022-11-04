@@ -49,6 +49,13 @@ public:
         OperatorFactory::GetProjectOperator(dynamic_cast<SelectStmt *>(select_stmt), project_oper);
         return new SelectExpr(project_oper);
       }
+      case EXPR_VALUES: {
+        auto values_expr = new ValuesExpr();
+        for (int i = 0; i < expr.value_num; ++i) {
+          values_expr->add_value(expr.values[i]);
+        }
+        return values_expr;
+      }
       case EXPR_NONE:
       default: {
         assert(false);
