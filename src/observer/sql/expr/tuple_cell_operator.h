@@ -116,17 +116,34 @@ public:
     return {INTS, static_cast<char *>(value.data)};
   }
 
+  static inline double my_round(double number, unsigned int bits)
+  {
+    long long integerPart = number;
+    number -= integerPart;
+    for (unsigned int i = 0; i < bits; ++i)
+      number *= 10;
+    number = (long long)(number + 0.5);
+    for (unsigned int i = 0; i < bits; ++i)
+      number /= 10;
+    return integerPart + number;
+  }
+
   static inline TupleCell Round(const TupleCell &left_cell, const TupleCell &right_cell)
   {
     float left = TupleCellToFloat(left_cell);
     int right = TupleCellToInt(right_cell);
-    float result = std::round(left * pow(10, right)) / pow(10, right);
-    std::stringstream ss;
-    ss << result;
+    // double res = my_round(left, right);
+    // float result = std::round(left * pow(10, right)) / pow(10, right);
+    int num = 0;
+    auto tmp = left;
+    while (tmp / 10 > 1) {
+      tmp = tmp / 10;
+      num++;
+    }
     Value value;
-    value_init_string(&value, ss.str().c_str());
+    value_init_string(&value, double2string(left, right).c_str());
     TupleCell re = {CHARS, static_cast<char *>(value.data)};
-    re.set_length(right + (result / 10) + 2);
+    re.set_length(right + num + 2);
     return re;
   }
 

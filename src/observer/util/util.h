@@ -26,6 +26,8 @@ constexpr int kDayLen = 2;
 
 std::string double2string(double v);
 
+std::string double2string(double v, int num);
+
 RC char2date(const char *chars, int *date);
 
 std::string date2string(int date);

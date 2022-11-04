@@ -34,6 +34,22 @@ std::string double2string(double v)
   return {buf, len};
 }
 
+std::string double2string(double v, int num)
+{
+  std::stringstream ss;
+  ss << "%." << num << 'f';
+  char buf[256];
+  snprintf(buf, sizeof(buf), ss.str().c_str(), v);
+  size_t len = strlen(buf);
+  while (buf[len - 1] == '0') {
+    len--;
+  }
+  if (buf[len - 1] == '.') {
+    len--;
+  }
+  return {buf, len};
+}
+
 RC char2date(const char *chars, int *date)
 {
   RC rc = RC::SUCCESS;
