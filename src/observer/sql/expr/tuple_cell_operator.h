@@ -8,6 +8,7 @@
 #include "sql/expr/tuple_cell.h"
 #include <sstream>
 #include <math.h>
+#include "util/util.h"
 
 class TupleCellOperator {
 public:
@@ -129,9 +130,79 @@ public:
 
   static inline TupleCell DateFormat(const TupleCell &left_cell, const TupleCell &right_cell)
   {
+    // y m d
+    auto ymd = date2ymd(*(int *)left_cell.data());
+    // auto s = date2string(*(int *)left_cell.data());
+    int y = ymd[0];
+    int m = ymd[1];
+    int d = ymd[2];
+
+    // format
+    std::stringstream ss;
+    ss << right_cell.data();
+    std::string format = ss.str();
+    std::stringstream os;
+    int length = 0;
+    for (size_t i = 0; i < format.size(); i++) {
+      if (format[i] == '%') {
+        if (i != format.size() - 1) {
+          i++;
+          switch (format[i]) {
+            case 'Y':
+            case 'y': {
+              if (y <= 9) {
+                os << 0;
+              }
+              if (y <= 99) {
+                os << 0;
+              }
+              if (y <= 999) {
+                os << 0;
+              }
+              os << y;
+              length += 4;
+              break;
+            }
+            case 'M':
+            case 'm': {
+              if (m <= 9) {
+                os << 0;
+              }
+              os << m;
+              length += 2;
+              break;
+            }
+            case 'D':
+            case 'd': {
+              if (d <= 9) {
+                os << 0;
+              }
+              os << d;
+              length += 2;
+              break;
+            }
+            default: {
+              os << '%' << format[i];
+              length += 2;
+              break;
+            }
+          }
+
+        } else {
+          length++;
+          os << format[i];
+        }
+      } else {
+        length++;
+        os << format[i];
+      }
+    }
+
     Value value;
-    value_init_string(&value, "result");
-    return {CHARS, static_cast<char *>(value.data)};
+    value_init_string(&value, os.str().c_str());
+    TupleCell re = {CHARS, static_cast<char *>(value.data)};
+    re.set_length(length);
+    return re;
   }
 
   static inline int TupleCellToInt(const TupleCell &cell)
