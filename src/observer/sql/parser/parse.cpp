@@ -200,6 +200,9 @@ void selects_append_attr(Selects *selects, Expr *expr)  // UNUSE
     } break;
     case EXPR_SELECT:
       break;
+    case EXPR_BRACE: {
+      selects_append_attr(selects, expr->left);
+    } break;
     case EXPR_VALUE:
     case EXPR_NONE:
     default:

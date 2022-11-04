@@ -144,7 +144,7 @@ public:
                (left_cell.attr_type() == UNDEFINED || right_cell.attr_type() == UNDEFINED)) {
       cell = {UNDEFINED, nullptr};
       return rc;
-    } else if (type_ == EXPR_NEGATIVE && left_cell.attr_type() == UNDEFINED) {
+    } else if ((type_ == EXPR_NEGATIVE || type_ == EXPR_BRACE) && left_cell.attr_type() == UNDEFINED) {
       cell = {UNDEFINED, nullptr};
       return rc;
     }
@@ -167,7 +167,8 @@ public:
       case EXPR_NONE:
       case EXPR_VALUE:
       case EXPR_ATTR:
-      case EXPR_SELECT: {
+      case EXPR_SELECT:
+      case EXPR_BRACE: {
         assert(false);
       } break;
     }
