@@ -130,7 +130,7 @@ public:
     RC rc = RC::SUCCESS;
     TupleCell left_cell;
     TupleCell right_cell;
-    if (type_ >= EXPR_PLUS && type_ <= EXPR_DIVIDE) {
+    if ((type_ >= EXPR_PLUS && type_ <= EXPR_DIVIDE) || type_ == EXPR_ROUND || type_ == EXPR_DATE_FORMAT) {
       left_expr_->get_value(tuple, left_cell);
       right_expr_->get_value(tuple, right_cell);
     } else if (type_ == EXPR_NEGATIVE || type_ == EXPR_LENGTH) {
@@ -172,16 +172,16 @@ public:
         cell = TupleCellOperator::Length(left_cell);
       } break;
       case EXPR_ROUND: {
-        if (left_cell.attr_type() != FLOATS) {
+        if (left_cell.attr_type() != FLOATS || right_cell.attr_type() != INTS) {
           return RC::GENERIC_ERROR;
         }
-        // cell = TupleCellOperator::Round(left_cell);
+        cell = TupleCellOperator::Round(left_cell, right_cell);
       } break;
       case EXPR_DATE_FORMAT: {
         if (left_cell.attr_type() != DATES) {
           return RC::GENERIC_ERROR;
         }
-        // cell = TupleCellOperator::DateFormat(left_cell);
+        // cell = TupleCellOperator::DateFormat(left_cell, right_cell);
       } break;
       case EXPR_NONE:
       case EXPR_VALUE:

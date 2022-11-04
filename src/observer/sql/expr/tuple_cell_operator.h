@@ -6,6 +6,8 @@
 
 #include <cfloat>
 #include "sql/expr/tuple_cell.h"
+#include <sstream>
+#include <math.h>
 
 class TupleCellOperator {
 public:
@@ -111,15 +113,18 @@ public:
     return {INTS, static_cast<char *>(value.data)};
   }
 
-  static inline TupleCell Round(const TupleCell &cell)
+  static inline TupleCell Round(const TupleCell &left_cell, const TupleCell &right_cell)
   {
-    if (cell.attr_type() != FLOATS) {
-      return {UNDEFINED, nullptr};
-    }
-    int result = TupleCellToFloat(cell) + 0.5;
+    float left = TupleCellToFloat(left_cell);
+    int right = TupleCellToInt(right_cell);
+    float result = std::round(left * pow(10, right)) / pow(10, right);
+    std::stringstream ss;
+    ss << result;
     Value value;
-    value_init_integer(&value, result);
-    return {INTS, static_cast<char *>(value.data)};
+    value_init_string(&value, ss.str().c_str());
+    TupleCell re = {CHARS, static_cast<char *>(value.data)};
+    re.set_length(right + 2);
+    return re;
   }
 
   static inline TupleCell DateFormat(const TupleCell &cell)
