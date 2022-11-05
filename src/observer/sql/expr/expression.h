@@ -301,6 +301,16 @@ public:
     return;
   }
 
+  Expression *left()
+  {
+    return left_expr_;
+  }
+
+  Expression *right()
+  {
+    return right_expr_;
+  }
+
 private:
   ExprType type_;
   Expression *left_expr_;

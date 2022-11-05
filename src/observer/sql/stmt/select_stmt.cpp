@@ -246,6 +246,123 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
       }
     }
   }
+
+  // check function expr
+  for (auto &expr : express) {
+    if (expr->type() == EXPR_LENGTH) {
+      auto expr_expr = dynamic_cast<ExprExpr *>(expr);
+      auto left = expr_expr->left();
+      switch (left->type()) {
+        case EXPR_ATTR: {
+          FieldExpr *expr_left = dynamic_cast<FieldExpr *>(left);
+          const FieldMeta *f = expr_left->field().meta();
+          if (f == nullptr || f->type() != CHARS) {
+            return RC::GENERIC_ERROR;
+          }
+        } break;
+        case EXPR_VALUE: {
+          ValueExpr *expr_left = dynamic_cast<ValueExpr *>(left);
+          TupleCell cell;
+          expr_left->get_tuple_cell(cell);
+          if (cell.attr_type() != CHARS) {
+            return RC::GENERIC_ERROR;
+          }
+        } break;
+        default:
+          return RC::GENERIC_ERROR;
+          break;
+      }
+    }
+    if (expr->type() == EXPR_ROUND) {
+      auto expr_expr = dynamic_cast<ExprExpr *>(expr);
+      // check left
+      auto left = expr_expr->left();
+      switch (left->type()) {
+        case EXPR_ATTR: {
+          FieldExpr *expr_left = dynamic_cast<FieldExpr *>(left);
+          const FieldMeta *f = expr_left->field().meta();
+          if (f == nullptr || f->type() != FLOATS) {
+            return RC::GENERIC_ERROR;
+          }
+        } break;
+        case EXPR_VALUE: {
+          ValueExpr *expr_left = dynamic_cast<ValueExpr *>(left);
+          TupleCell cell;
+          expr_left->get_tuple_cell(cell);
+          if (cell.attr_type() != FLOATS) {
+            return RC::GENERIC_ERROR;
+          }
+        } break;
+        default:
+          return RC::GENERIC_ERROR;
+          break;
+      }
+
+      // check right
+      auto right = expr_expr->right();
+      if (right == nullptr) {
+        continue;
+      }
+      switch (right->type()) {
+        case EXPR_VALUE: {
+          ValueExpr *expr_right = dynamic_cast<ValueExpr *>(right);
+          TupleCell cell;
+          expr_right->get_tuple_cell(cell);
+          if (cell.attr_type() != INTS) {
+            return RC::GENERIC_ERROR;
+          }
+        } break;
+        default:
+          return RC::GENERIC_ERROR;
+          break;
+      }
+    }
+    if (expr->type() == EXPR_DATE_FORMAT) {
+      auto expr_expr = dynamic_cast<ExprExpr *>(expr);
+      // check left
+      auto left = expr_expr->left();
+      switch (left->type()) {
+        case EXPR_ATTR: {
+          FieldExpr *expr_left = dynamic_cast<FieldExpr *>(left);
+          const FieldMeta *f = expr_left->field().meta();
+          if (f == nullptr || f->type() != DATES) {
+            return RC::GENERIC_ERROR;
+          }
+        } break;
+        case EXPR_VALUE: {
+          ValueExpr *expr_left = dynamic_cast<ValueExpr *>(left);
+          TupleCell cell;
+          expr_left->get_tuple_cell(cell);
+          if (cell.attr_type() != CHARS) {
+            return RC::GENERIC_ERROR;
+          }
+        } break;
+        default:
+          return RC::GENERIC_ERROR;
+          break;
+      }
+
+      // check right
+      auto right = expr_expr->right();
+      if (right == nullptr) {
+        continue;
+      }
+      switch (right->type()) {
+        case EXPR_VALUE: {
+          ValueExpr *expr_right = dynamic_cast<ValueExpr *>(right);
+          TupleCell cell;
+          expr_right->get_tuple_cell(cell);
+          if (cell.attr_type() != CHARS) {
+            return RC::GENERIC_ERROR;
+          }
+        } break;
+        default:
+          return RC::GENERIC_ERROR;
+          break;
+      }
+    }
+  }
+
   // collect group by field in `select` statement
   std::vector<Field> group_by_fields;
   if (select_sql.group_num > 0) {
