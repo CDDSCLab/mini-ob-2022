@@ -537,7 +537,7 @@ func_attr:
 		$$ = &CONTEXT->exprs[CONTEXT->expr_length++];
 	}
     | DATE_FORMAT LBRACE primary_expr COMMA primary_expr RBRACE {
-		expr_init_expr(&CONTEXT->exprs[CONTEXT->expr_length], EXPR_DATE_FORMAT, $3, NULL);
+		expr_init_expr(&CONTEXT->exprs[CONTEXT->expr_length], EXPR_DATE_FORMAT, $3, $5);
 		$$ = &CONTEXT->exprs[CONTEXT->expr_length++];
 	}
     ;
