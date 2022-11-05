@@ -37,7 +37,12 @@ RC SelectExpr::get_value(const Tuple &tuple, TupleCell &cell) const
   }
   if ((rc = project_oper_->next()) != RC::SUCCESS) {
     project_oper_->close();
-    return rc;
+    if (rc != RC::RECORD_EOF) {
+      return rc;
+    } else {
+      cell.set_type(NULLS);
+      return RC::SUCCESS;
+    }
   }
   auto current_tuple = project_oper_->current_tuple();
   if (current_tuple->cell_num() > 1) {
