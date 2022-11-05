@@ -61,7 +61,7 @@ public:
       }
       case EXPR_NONE:
       default: {
-        assert(false);
+        return nullptr;
       } break;
     }
   }
