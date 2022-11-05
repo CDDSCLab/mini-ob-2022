@@ -187,8 +187,7 @@ public:
         if (i != format.size() - 1) {
           i++;
           switch (format[i]) {
-            case 'Y':
-            case 'y': {
+            case 'Y': {
               if (y <= 9) {
                 os << 0;
               }
@@ -202,7 +201,70 @@ public:
               length += 4;
               break;
             }
-            case 'M':
+            case 'y': {
+              y = y % 100;
+              if (y <= 9) {
+                os << 0;
+              }
+              os << y;
+              length += 2;
+              break;
+            }
+            case 'M': {
+              switch (m) {
+                case 1: {
+                  os << "January";
+                  length += 7;
+                } break;
+                case 2: {
+                  os << "February";
+                  length += 8;
+                } break;
+                case 3: {
+                  os << "March";
+                  length += 5;
+                } break;
+                case 4: {
+                  os << "April";
+                  length += 5;
+                } break;
+                case 5: {
+                  os << "May";
+                  length += 3;
+                } break;
+                case 6: {
+                  os << "June";
+                  length += 4;
+                } break;
+                case 7: {
+                  os << "July";
+                  length += 4;
+                } break;
+                case 8: {
+                  os << "August";
+                  length += 6;
+                } break;
+                case 9: {
+                  os << "September";
+                  length += 9;
+                } break;
+                case 10: {
+                  os << "October";
+                  length += 7;
+                } break;
+                case 11: {
+                  os << "November";
+                  length += 8;
+                } break;
+                case 12: {
+                  os << "December";
+                  length += 8;
+                } break;
+                default:
+                  break;
+              }
+              break;
+            }
             case 'm': {
               if (m <= 9) {
                 os << 0;
@@ -211,7 +273,30 @@ public:
               length += 2;
               break;
             }
-            case 'D':
+            case 'D': {
+              os << d;
+              switch (d % 10) {
+                case 1: {
+                  os << "st";
+                } break;
+                case 2: {
+                  os << "nd";
+                } break;
+                case 3: {
+                  os << "rd";
+                } break;
+                default: {
+                  os << "th";
+                } break;
+              }
+              if (d <= 9) {
+                length += 3;
+              } else {
+                length += 4;
+              }
+
+              break;
+            }
             case 'd': {
               if (d <= 9) {
                 os << 0;
@@ -243,7 +328,6 @@ public:
     re.set_length(length);
     return re;
   }
-
   static inline int TupleCellToInt(const TupleCell &cell)
   {
     if (cell.attr_type() != INTS) {
