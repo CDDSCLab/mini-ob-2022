@@ -614,6 +614,7 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
     ss << std::endl;
 
     session_event->set_response(ss.str());
+    return RC::SUCCESS;
   }
 }
 

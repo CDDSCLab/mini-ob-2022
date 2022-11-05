@@ -189,7 +189,7 @@ public:
 
       } break;
       case EXPR_DATE_FORMAT: {
-        if (left_cell.attr_type() != DATES) {
+        if (left_cell.attr_type() != DATES && left_cell.attr_type() != CHARS) {
           return RC::GENERIC_ERROR;
         }
         cell = TupleCellOperator::DateFormat(left_cell, right_cell);

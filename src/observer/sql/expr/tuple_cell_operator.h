@@ -170,11 +170,23 @@ public:
   static inline TupleCell DateFormat(const TupleCell &left_cell, const TupleCell &right_cell)
   {
     // y m d
-    auto ymd = date2ymd(*(int *)left_cell.data());
-    // auto s = date2string(*(int *)left_cell.data());
-    int y = ymd[0];
-    int m = ymd[1];
-    int d = ymd[2];
+    int y, m, d = 0;
+    if (left_cell.attr_type() == CHARS) {
+      int date = 0;
+      RC rc = char2date((char *)left_cell.data(), &date);
+      if (rc != RC::SUCCESS) {
+        return left_cell;
+      }
+      auto ymd = date2ymd(date);
+      y = ymd[0];
+      m = ymd[1];
+      d = ymd[2];
+    } else {
+      auto ymd = date2ymd(*(int *)left_cell.data());
+      y = ymd[0];
+      m = ymd[1];
+      d = ymd[2];
+    }
 
     // format
     std::stringstream ss;
