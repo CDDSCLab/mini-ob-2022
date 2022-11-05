@@ -22,7 +22,11 @@ public:
       case EXPR_PLUS:
       case EXPR_MINUS:
       case EXPR_MULTIPLY:
-      case EXPR_DIVIDE:
+      case EXPR_DIVIDE: {
+        return new ExprExpr(expr.expr_type,
+            NewExpression(*expr.left, db, default_table, tables),
+            NewExpression(*expr.right, db, default_table, tables));
+      }
       case EXPR_ROUND: {
         if (expr.right->expr_type != EXPR_VALUE) {
           return new ExprExpr(expr.expr_type, NewExpression(*expr.left, db, default_table, tables), nullptr);

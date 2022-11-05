@@ -134,7 +134,10 @@ public:
     RC rc = RC::SUCCESS;
     TupleCell left_cell;
     TupleCell right_cell;
-    if ((type_ >= EXPR_PLUS && type_ <= EXPR_DIVIDE) || type_ == EXPR_ROUND || type_ == EXPR_DATE_FORMAT) {
+    if ((type_ >= EXPR_PLUS && type_ <= EXPR_DIVIDE)) {
+      left_expr_->get_value(tuple, left_cell);
+      right_expr_->get_value(tuple, right_cell);
+    } else if (type_ == EXPR_ROUND || type_ == EXPR_DATE_FORMAT) {
       left_expr_->get_value(tuple, left_cell);
       if (right_expr_ != nullptr && right_expr_->type() == EXPR_VALUE) {
         right_expr_->get_value(tuple, right_cell);
