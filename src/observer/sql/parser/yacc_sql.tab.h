@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.7.  */
+/* A Bison parser, made by GNU Bison 3.8.2.  */
 
 /* Bison interface for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2020 Free Software Foundation,
+   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2021 Free Software Foundation,
    Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* As a special exception, you may create a larger work that contains
    part or all of the Bison parser skeleton and distribute that work
@@ -98,39 +98,40 @@ extern int yydebug;
     FROM = 299,                    /* FROM  */
     WHERE = 300,                   /* WHERE  */
     AND = 301,                     /* AND  */
-    SET = 302,                     /* SET  */
-    ON = 303,                      /* ON  */
-    LOAD = 304,                    /* LOAD  */
-    DATA = 305,                    /* DATA  */
-    INFILE = 306,                  /* INFILE  */
-    EQ = 307,                      /* EQ  */
-    LT = 308,                      /* LT  */
-    GT = 309,                      /* GT  */
-    LE = 310,                      /* LE  */
-    GE = 311,                      /* GE  */
-    NE = 312,                      /* NE  */
-    LIKE = 313,                    /* LIKE  */
-    IN = 314,                      /* IN  */
-    EXISTS = 315,                  /* EXISTS  */
-    INNER = 316,                   /* INNER  */
-    JOIN = 317,                    /* JOIN  */
-    IS = 318,                      /* IS  */
-    NOT = 319,                     /* NOT  */
-    NULL_TOKEN = 320,              /* NULL_TOKEN  */
-    NULLABLE = 321,                /* NULLABLE  */
-    ORDER = 322,                   /* ORDER  */
-    ASC = 323,                     /* ASC  */
-    PLUS = 324,                    /* PLUS  */
-    MINUS = 325,                   /* MINUS  */
-    STAR = 326,                    /* STAR  */
-    DIVIDE = 327,                  /* DIVIDE  */
-    AS = 328,                      /* AS  */
-    NUMBER = 329,                  /* NUMBER  */
-    FLOAT = 330,                   /* FLOAT  */
-    ID = 331,                      /* ID  */
-    PATH = 332,                    /* PATH  */
-    SSS = 333,                     /* SSS  */
-    STRING_V = 334                 /* STRING_V  */
+    OR = 302,                      /* OR  */
+    SET = 303,                     /* SET  */
+    ON = 304,                      /* ON  */
+    LOAD = 305,                    /* LOAD  */
+    DATA = 306,                    /* DATA  */
+    INFILE = 307,                  /* INFILE  */
+    EQ = 308,                      /* EQ  */
+    LT = 309,                      /* LT  */
+    GT = 310,                      /* GT  */
+    LE = 311,                      /* LE  */
+    GE = 312,                      /* GE  */
+    NE = 313,                      /* NE  */
+    LIKE = 314,                    /* LIKE  */
+    IN = 315,                      /* IN  */
+    EXISTS = 316,                  /* EXISTS  */
+    INNER = 317,                   /* INNER  */
+    JOIN = 318,                    /* JOIN  */
+    IS = 319,                      /* IS  */
+    NOT = 320,                     /* NOT  */
+    NULL_TOKEN = 321,              /* NULL_TOKEN  */
+    NULLABLE = 322,                /* NULLABLE  */
+    ORDER = 323,                   /* ORDER  */
+    ASC = 324,                     /* ASC  */
+    PLUS = 325,                    /* PLUS  */
+    MINUS = 326,                   /* MINUS  */
+    STAR = 327,                    /* STAR  */
+    DIVIDE = 328,                  /* DIVIDE  */
+    AS = 329,                      /* AS  */
+    NUMBER = 330,                  /* NUMBER  */
+    FLOAT = 331,                   /* FLOAT  */
+    ID = 332,                      /* ID  */
+    PATH = 333,                    /* PATH  */
+    SSS = 334,                     /* SSS  */
+    STRING_V = 335                 /* STRING_V  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -139,7 +140,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 153 "yacc_sql.y"
+#line 154 "yacc_sql.y"
 
   struct _RelAttr *_attr;
   struct _Condition *_condition;
@@ -151,7 +152,7 @@ union YYSTYPE
   float floats;
   char *position;
 
-#line 155 "yacc_sql.tab.h"
+#line 156 "yacc_sql.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -161,6 +162,8 @@ typedef union YYSTYPE YYSTYPE;
 
 
 
+
 int yyparse (void *scanner);
+
 
 #endif /* !YY_YY_YACC_SQL_TAB_H_INCLUDED  */

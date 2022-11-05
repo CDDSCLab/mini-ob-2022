@@ -161,6 +161,11 @@ void condition_init(Condition *condition, CompOp comp, Expr *left_expr, Expr *ri
   condition->right_expr = *right_expr;
 }
 
+void condition_init_logical(Condition *condition, LogicalOp logical_op)
+{
+  condition->logical_op = logical_op;
+}
+
 void condition_destroy(Condition *condition)
 {
   expr_destroy(&condition->left_expr);

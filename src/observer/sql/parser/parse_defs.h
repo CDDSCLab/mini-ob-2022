@@ -53,6 +53,7 @@ typedef enum {
 } CompOp;
 
 typedef enum {
+  LOGICAL_NONE,
   LOGICAL_AND,
   LOGICAL_OR,
 } LogicalOp;
@@ -99,6 +100,7 @@ typedef enum { CONDITION_UNDEFINED, CONDITION_ATTR, CONDITION_VALUE, CONDITION_S
 
 typedef struct _Condition {
   CompOp comp;  // comparison operator
+  LogicalOp logical_op;
   Expr left_expr;
   Expr right_expr;
   RelAttr left_attr;  // left-hand side attribute
@@ -279,6 +281,7 @@ void expr_init_expr(Expr *expr, ExprType expr_type, Expr *left_expr, Expr *right
 void expr_destroy(Expr *expr);
 
 void condition_init(Condition *condition, CompOp comp, Expr *left_expr, Expr *right_expr);
+void condition_init_logical(Condition *condition, LogicalOp logical_op);
 void condition_destroy(Condition *condition);
 
 void attr_info_init(AttrInfo *attr_info, const char *name, AttrType type, size_t length, bool nullable);

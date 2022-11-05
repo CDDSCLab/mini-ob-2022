@@ -122,6 +122,7 @@ ParserContext *get_context(yyscan_t scanner)
         FROM
         WHERE
         AND
+        OR
         SET
         ON
         LOAD
@@ -709,47 +710,61 @@ join_list:
 
 where:
     /* empty */ 
-    | WHERE condition condition_list {}
-    ;
+    | WHERE condition condition_list {
+        condition_init_logical($2, LOGICAL_NONE);
+    };
 condition_list:
     /* empty */
-    | AND condition condition_list {}
+    | AND condition condition_list {
+        condition_init_logical($2, LOGICAL_AND);
+    }
+    | OR condition condition_list {
+        condition_init_logical($2, LOGICAL_OR);
+    }
     ;
 
 condition:
     expr comOp expr {
-        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
+        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]],
                 $2, $1, $3);
+        $$ = &CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++];
     }
     | func_attr comOp func_attr {
-        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
+        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]],
                 $2, $1, $3);
+        $$ = &CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++];
     }
     | func_attr comOp expr {
-        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
+        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]],
                 $2, $1, $3);
+        $$ = &CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++];
     }
     | expr comOp func_attr {
-        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
+        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]],
                 $2, $1, $3);
+        $$ = &CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++];
     }
     | expr IN LBRACE condition_value condition_value_list RBRACE {
-        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
+        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]],
                 IN_OP, $1, &CONTEXT->exprs[CONTEXT->expr_length++]);
+        $$ = &CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++];
     }
     | expr NOT IN LBRACE condition_value condition_value_list RBRACE {
-        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
+        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]],
                 NOT_IN_OP, $1, &CONTEXT->exprs[CONTEXT->expr_length++]);
+        $$ = &CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++];
     }
     | expr IN LBRACE select_unit RBRACE  {
         expr_init_select(&CONTEXT->exprs[CONTEXT->expr_length], $4);
-        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
+        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]],
                 IN_OP, $1, &CONTEXT->exprs[CONTEXT->expr_length++]);
+        $$ = &CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++];
     }
     | expr NOT IN LBRACE select_unit RBRACE {
         expr_init_select(&CONTEXT->exprs[CONTEXT->expr_length], $5);
-        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
+        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]],
                 NOT_IN_OP, $1, &CONTEXT->exprs[CONTEXT->expr_length++]);
+        $$ = &CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++];
     }
     | EXISTS LBRACE select_unit RBRACE {
         value_init_null(&CONTEXT->values[CONTEXT->value_length]);
@@ -757,8 +772,9 @@ condition:
         expr_init_value(&CONTEXT->exprs[CONTEXT->expr_length++], left_value);
 
         expr_init_select(&CONTEXT->exprs[CONTEXT->expr_length++], $3);
-        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
+        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]],
                 EXISTS_OP, &CONTEXT->exprs[CONTEXT->expr_length - 2], &CONTEXT->exprs[CONTEXT->expr_length - 1]);
+        $$ = &CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++];
     }
     | NOT EXISTS LBRACE select_unit RBRACE {
         value_init_null(&CONTEXT->values[CONTEXT->value_length]);
@@ -766,8 +782,9 @@ condition:
         expr_init_value(&CONTEXT->exprs[CONTEXT->expr_length++], left_value);
 
         expr_init_select(&CONTEXT->exprs[CONTEXT->expr_length++], $4);
-        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
+        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]],
                 NOT_EXISTS_OP, &CONTEXT->exprs[CONTEXT->expr_length - 2], &CONTEXT->exprs[CONTEXT->expr_length - 1]);
+        $$ = &CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++];
     }
 	| value null_comOp {
         expr_init_value(&CONTEXT->exprs[CONTEXT->expr_length++], $1);
@@ -776,8 +793,9 @@ condition:
         Value *right_value = &CONTEXT->values[CONTEXT->value_length++];
         expr_init_value(&CONTEXT->exprs[CONTEXT->expr_length++], right_value);
 
-        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
+        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]],
                 $2, &CONTEXT->exprs[CONTEXT->expr_length - 2], &CONTEXT->exprs[CONTEXT->expr_length - 1]);
+        $$ = &CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++];
 	}
 	| attr null_comOp {
         expr_init_attr(&CONTEXT->exprs[CONTEXT->expr_length++], $1);
@@ -786,8 +804,9 @@ condition:
         Value *right_value = &CONTEXT->values[CONTEXT->value_length++];
         expr_init_value(&CONTEXT->exprs[CONTEXT->expr_length++], right_value);
 
-        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++],
+        condition_init(&CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]],
                 $2, &CONTEXT->exprs[CONTEXT->expr_length - 2], &CONTEXT->exprs[CONTEXT->expr_length - 1]);
+        $$ = &CONTEXT->conditions[CONTEXT->select_length][CONTEXT->condition_length[CONTEXT->select_length]++];
 	}
     ;
 comOp:
