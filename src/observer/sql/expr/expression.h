@@ -266,24 +266,11 @@ public:
 
     if (type_ == EXPR_NEGATIVE) {
       os << "-";
-      if (left_expr_->type() != EXPR_VALUE && left_expr_->type() != EXPR_ATTR) {
-        os << "(";
-        left_expr_->get_alias(os, show_table_name);
-        os << ")";
-      } else {
-        left_expr_->get_alias(os, show_table_name);
-      }
+      left_expr_->get_alias(os, show_table_name);
       return;
     }
 
-    if ((left_expr_->type() == EXPR_PLUS || left_expr_->type() == EXPR_MINUS) &&
-        (type_ == EXPR_MULTIPLY || type_ == EXPR_DIVIDE)) {
-      os << "(";
-      left_expr_->get_alias(os, show_table_name);
-      os << ")";
-    } else {
-      left_expr_->get_alias(os, show_table_name);
-    }
+    left_expr_->get_alias(os, show_table_name);
 
     switch (type_) {
       case EXPR_PLUS: {
@@ -306,19 +293,7 @@ public:
         break;
     }
 
-    if ((right_expr_->type() == EXPR_PLUS || right_expr_->type() == EXPR_MINUS) &&
-        (type_ == EXPR_MULTIPLY || type_ == EXPR_DIVIDE)) {
-      os << "(";
-      right_expr_->get_alias(os, show_table_name);
-      os << ")";
-    } else if (right_expr_->type() == EXPR_NEGATIVE) {
-      os << "(";
-      right_expr_->get_alias(os, show_table_name);
-      os << ")";
-    } else {
-      right_expr_->get_alias(os, show_table_name);
-    }
-    return;
+    right_expr_->get_alias(os, show_table_name);
   }
 
   Expression *left()
