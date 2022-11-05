@@ -175,12 +175,15 @@ public:
         cell = TupleCellOperator::Length(left_cell);
       } break;
       case EXPR_ROUND: {
-        // if (left_cell.attr_type() != FLOATS || right_cell.attr_type() != INTS) {
-        //   return RC::GENERIC_ERROR;
-        // }
         if (right_expr_ != nullptr && right_expr_->type() == EXPR_VALUE) {
+          if (left_cell.attr_type() != FLOATS || right_cell.attr_type() != INTS) {
+            return RC::GENERIC_ERROR;
+          }
           cell = TupleCellOperator::Round(left_cell, right_cell);
         } else {
+          if (left_cell.attr_type() != FLOATS) {
+            return RC::GENERIC_ERROR;
+          }
           cell = TupleCellOperator::Round_default(left_cell);
         }
 

@@ -306,8 +306,8 @@ public:
               break;
             }
             default: {
-              os << '%' << format[i];
-              length += 2;
+              os << format[i];
+              length += 1;
               break;
             }
           }
