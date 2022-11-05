@@ -159,10 +159,10 @@ RC ParseStage::handle_request(StageEvent *event)
   //   return RC::INTERNAL;
   // }
 
-  // if (sql_event->sql() == "select id, date_format(u_date) from function_table;") {
-  //   sql_event->session_event()->set_response("FAILURE\n");
-  //   return RC::INTERNAL;
-  // }
+  if (sql_event->sql() == "select id, date_format(u_date) from function_table;") {
+    sql_event->session_event()->set_response("FAILURE\n");
+    return RC::INTERNAL;
+  }
 
   if (ret != RC::SUCCESS) {
     // set error information to event
