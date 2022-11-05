@@ -173,8 +173,6 @@ ParserContext *get_context(yyscan_t scanner)
 
 %type <number> type;
 %type <number> aggr_type;
-%type <number> func_type_1;
-%type <number> func_type_2;
 %type <_attr> attr;
 %type <_attr> aggr_attr;
 %type <_condition> condition;
@@ -526,25 +524,23 @@ func_attr_list:
     ;
 
 func_attr:
-	  func_type_1 LBRACE primary_expr RBRACE {
-		expr_init_expr(&CONTEXT->exprs[CONTEXT->expr_length], $1, $3, NULL);
+	  LENGTH LBRACE primary_expr RBRACE {
+		expr_init_expr(&CONTEXT->exprs[CONTEXT->expr_length], EXPR_LENGTH, $3, NULL);
 		$$ = &CONTEXT->exprs[CONTEXT->expr_length++];
 	}
-    | func_type_2 LBRACE primary_expr COMMA primary_expr RBRACE {
-		expr_init_expr(&CONTEXT->exprs[CONTEXT->expr_length], $1, $3, $5);
+    | ROUND LBRACE primary_expr RBRACE {
+        expr_init_expr(&CONTEXT->exprs[CONTEXT->expr_length], EXPR_ROUND, $3, NULL);
+        $$ = &CONTEXT->exprs[CONTEXT->expr_length++];
+    }
+    | ROUND LBRACE primary_expr COMMA primary_expr RBRACE {
+		expr_init_expr(&CONTEXT->exprs[CONTEXT->expr_length], EXPR_ROUND, $3, $5);
 		$$ = &CONTEXT->exprs[CONTEXT->expr_length++];
 	}
-    | func_type_2 LBRACE primary_expr RBRACE {
-		expr_init_expr(&CONTEXT->exprs[CONTEXT->expr_length], $1, $3, NULL);
+    | DATE_FORMAT LBRACE primary_expr COMMA primary_expr RBRACE {
+		expr_init_expr(&CONTEXT->exprs[CONTEXT->expr_length], EXPR_DATE_FORMAT, $3, NULL);
 		$$ = &CONTEXT->exprs[CONTEXT->expr_length++];
 	}
     ;
-func_type_1:
-	   LENGTH { $$ = EXPR_LENGTH; };
-func_type_2:
-	   ROUND { $$ = EXPR_ROUND; }
-	 | DATE_FORMAT { $$ = EXPR_DATE_FORMAT; }
-	 ;
 
 alias:
     // empty
