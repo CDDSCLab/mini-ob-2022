@@ -140,7 +140,7 @@ RC PredicateOperator::do_predicate(Tuple *tuple, bool *result)
       if (rc != RC::SUCCESS) {
         return rc;
       }
-      filter_result = !filter_unit;
+      filter_result = !filter_result;
     } else if (right_expr->type() == EXPR_SELECT) {
       std::vector<TupleCell> cells;
       rc = dynamic_cast<SelectExpr *>(right_expr)->get_value(*combine_tuple, right_cell);
@@ -160,6 +160,9 @@ RC PredicateOperator::do_predicate(Tuple *tuple, bool *result)
           break;
         case IS_NOT_NULL:
           filter_result = left_cell.attr_type() != NULLS;
+          break;
+        case EXISTS_OP:
+        case NOT_EXISTS_OP:
           break;
         default:
           *result = false;
