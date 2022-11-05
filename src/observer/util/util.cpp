@@ -34,6 +34,25 @@ std::string double2string(double v)
   return {buf, len};
 }
 
+std::string double2string(double v, int num)
+{
+  std::stringstream ss;
+  ss << "%." << num << 'f';
+  char buf[256];
+  snprintf(buf, sizeof(buf), ss.str().c_str(), v);
+  size_t len = strlen(buf);
+  if (num != 0) {
+    while (buf[len - 1] == '0') {
+      len--;
+    }
+    if (buf[len - 1] == '.') {
+      len--;
+    }
+  }
+
+  return {buf, len};
+}
+
 RC char2date(const char *chars, int *date)
 {
   RC rc = RC::SUCCESS;
@@ -67,6 +86,17 @@ std::string date2string(int date)
   day = static_cast<int>(date - pow(10, kYearLen) * year - pow(10, kMonthLen) * month);
   snprintf(buf, bufferSize, "%4d-%02d-%02d", year, month, day);
   return {buf};
+}
+
+std::vector<int> date2ymd(int date)
+{
+  constexpr int bufferSize = kYearLen + 1 + kMonthLen + 1 + kDayLen + 1;
+  char buf[bufferSize];
+  int year, month, day;
+  year = static_cast<int>(date / pow(10, kYearLen));
+  month = static_cast<int>((date - pow(10, kYearLen) * year) / pow(10, kMonthLen));
+  day = static_cast<int>(date - pow(10, kYearLen) * year - pow(10, kMonthLen) * month);
+  return {year, month, day};
 }
 
 bool is_legal_date(int year, int month, int day)

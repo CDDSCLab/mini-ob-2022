@@ -45,6 +45,10 @@ public:
     this->set_data(const_cast<char *>(data));
   }
 
+  void set_num(int num)
+  {
+    this->num_ = num;
+  }
   void to_string(std::ostream &os) const;
 
   Value to_value() const;
@@ -71,5 +75,6 @@ public:
 private:
   AttrType attr_type_ = UNDEFINED;
   int length_ = -1;
+  int num_ = 2;           //用于round
   char *data_ = nullptr;  // real data. no need to move to field_meta.offset
 };

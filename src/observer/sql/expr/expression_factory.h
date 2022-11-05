@@ -23,11 +23,22 @@ public:
       case EXPR_MINUS:
       case EXPR_MULTIPLY:
       case EXPR_DIVIDE:
+      case EXPR_ROUND: {
+        if (expr.right->expr_type != EXPR_VALUE) {
+          return new ExprExpr(expr.expr_type, NewExpression(*expr.left, db, default_table, tables), nullptr);
+        } else {
+          return new ExprExpr(expr.expr_type,
+              NewExpression(*expr.left, db, default_table, tables),
+              NewExpression(*expr.right, db, default_table, tables));
+        }
+      }
+      case EXPR_DATE_FORMAT:
         return new ExprExpr(expr.expr_type,
             NewExpression(*expr.left, db, default_table, tables),
             NewExpression(*expr.right, db, default_table, tables));
       case EXPR_NEGATIVE:
       case EXPR_BRACE:
+      case EXPR_LENGTH:
         return new ExprExpr(expr.expr_type, NewExpression(*expr.left, db, default_table, tables), nullptr);
       case EXPR_VALUE:
         return new ValueExpr(expr.value);
@@ -58,7 +69,7 @@ public:
       }
       case EXPR_NONE:
       default: {
-        assert(false);
+        return nullptr;
       } break;
     }
   }

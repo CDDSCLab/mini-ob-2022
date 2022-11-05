@@ -134,10 +134,12 @@ public:
     RC rc = RC::SUCCESS;
     TupleCell left_cell;
     TupleCell right_cell;
-    if (type_ >= EXPR_PLUS && type_ <= EXPR_DIVIDE) {
+    if ((type_ >= EXPR_PLUS && type_ <= EXPR_DIVIDE) || type_ == EXPR_ROUND || type_ == EXPR_DATE_FORMAT) {
       left_expr_->get_value(tuple, left_cell);
-      right_expr_->get_value(tuple, right_cell);
-    } else if (type_ == EXPR_NEGATIVE) {
+      if (right_expr_ != nullptr && right_expr_->type() == EXPR_VALUE) {
+        right_expr_->get_value(tuple, right_cell);
+      }
+    } else if (type_ == EXPR_NEGATIVE || type_ == EXPR_LENGTH) {
       left_expr_->get_value(tuple, left_cell);
     } else if (type_ == EXPR_BRACE) {
       return left_expr_->get_value(tuple, cell);
@@ -151,10 +153,13 @@ public:
                (left_cell.attr_type() == UNDEFINED || right_cell.attr_type() == UNDEFINED)) {
       cell = {UNDEFINED, nullptr};
       return rc;
-    } else if ((type_ == EXPR_NEGATIVE || type_ == EXPR_BRACE) && left_cell.attr_type() == UNDEFINED) {
+    } else if ((type_ == EXPR_NEGATIVE || type_ == EXPR_BRACE || type_ == EXPR_LENGTH || type_ == EXPR_ROUND ||
+                   type_ == EXPR_DATE_FORMAT) &&
+               left_cell.attr_type() == UNDEFINED) {
       cell = {UNDEFINED, nullptr};
       return rc;
     }
+
     switch (type_) {
       case EXPR_PLUS: {
         cell = TupleCellOperator::Plus(left_cell, right_cell);
@@ -170,6 +175,32 @@ public:
       } break;
       case EXPR_NEGATIVE: {
         cell = TupleCellOperator::Negative(left_cell, right_cell);
+      } break;
+      case EXPR_LENGTH: {
+        if (left_cell.attr_type() != CHARS) {
+          return RC::GENERIC_ERROR;
+        }
+        cell = TupleCellOperator::Length(left_cell);
+      } break;
+      case EXPR_ROUND: {
+        if (right_expr_ != nullptr && right_expr_->type() == EXPR_VALUE) {
+          if (left_cell.attr_type() != FLOATS || right_cell.attr_type() != INTS) {
+            return RC::GENERIC_ERROR;
+          }
+          cell = TupleCellOperator::Round(left_cell, right_cell);
+        } else {
+          if (left_cell.attr_type() != FLOATS) {
+            return RC::GENERIC_ERROR;
+          }
+          cell = TupleCellOperator::Round_default(left_cell);
+        }
+
+      } break;
+      case EXPR_DATE_FORMAT: {
+        if (left_cell.attr_type() != DATES && left_cell.attr_type() != CHARS) {
+          return RC::GENERIC_ERROR;
+        }
+        cell = TupleCellOperator::DateFormat(left_cell, right_cell);
       } break;
       case EXPR_NONE:
       case EXPR_VALUE:
@@ -196,13 +227,60 @@ public:
       return;
     }
 
-    if (type_ == EXPR_NEGATIVE) {
-      os << "-";
-      left_expr_->get_alias(os, show_table_name);
+    if (type_ == EXPR_LENGTH) {
+      if (left_expr_->type() == EXPR_VALUE) {
+        os << "length('";
+        left_expr_->get_alias(os, show_table_name);
+        os << "')";
+      } else {
+        os << "length(";
+        left_expr_->get_alias(os, show_table_name);
+        os << ")";
+      }
       return;
     }
 
-    left_expr_->get_alias(os, show_table_name);
+    if (type_ == EXPR_ROUND) {
+      os << "round(";
+      left_expr_->get_alias(os, show_table_name);
+      if (right_expr_ != nullptr && right_expr_->type() == EXPR_VALUE) {
+        os << ", ";
+        right_expr_->get_alias(os, show_table_name);
+      }
+
+      os << ")";
+      return;
+    }
+
+    if (type_ == EXPR_DATE_FORMAT) {
+      os << "date_format(";
+      left_expr_->get_alias(os, show_table_name);
+      os << ", ";
+      right_expr_->get_alias(os, show_table_name);
+      os << ")";
+      return;
+    }
+
+    if (type_ == EXPR_NEGATIVE) {
+      os << "-";
+      if (left_expr_->type() != EXPR_VALUE && left_expr_->type() != EXPR_ATTR) {
+        os << "(";
+        left_expr_->get_alias(os, show_table_name);
+        os << ")";
+      } else {
+        left_expr_->get_alias(os, show_table_name);
+      }
+      return;
+    }
+
+    if ((left_expr_->type() == EXPR_PLUS || left_expr_->type() == EXPR_MINUS) &&
+        (type_ == EXPR_MULTIPLY || type_ == EXPR_DIVIDE)) {
+      os << "(";
+      left_expr_->get_alias(os, show_table_name);
+      os << ")";
+    } else {
+      left_expr_->get_alias(os, show_table_name);
+    }
 
     switch (type_) {
       case EXPR_PLUS: {
@@ -225,13 +303,29 @@ public:
         break;
     }
 
-    if (right_expr_->type() == EXPR_NEGATIVE) {
+    if ((right_expr_->type() == EXPR_PLUS || right_expr_->type() == EXPR_MINUS) &&
+        (type_ == EXPR_MULTIPLY || type_ == EXPR_DIVIDE)) {
+      os << "(";
+      right_expr_->get_alias(os, show_table_name);
+      os << ")";
+    } else if (right_expr_->type() == EXPR_NEGATIVE) {
       os << "(";
       right_expr_->get_alias(os, show_table_name);
       os << ")";
     } else {
       right_expr_->get_alias(os, show_table_name);
     }
+    return;
+  }
+
+  Expression *left()
+  {
+    return left_expr_;
+  }
+
+  Expression *right()
+  {
+    return right_expr_;
   }
 
 private:

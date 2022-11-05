@@ -18,6 +18,7 @@ See the Mulan PSL v2 for more details. */
 
 #include "rc.h"
 #include "sql/parser/parse_defs.h"
+#include <vector>
 
 constexpr int kYearLen = 4;
 constexpr int kMonthLen = 2;
@@ -25,9 +26,13 @@ constexpr int kDayLen = 2;
 
 std::string double2string(double v);
 
+std::string double2string(double v, int num);
+
 RC char2date(const char *chars, int *date);
 
 std::string date2string(int date);
+
+std::vector<int> date2ymd(int date);
 
 bool is_legal_date(int year, int month, int day);
 
