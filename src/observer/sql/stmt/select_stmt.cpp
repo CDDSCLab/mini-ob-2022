@@ -231,28 +231,28 @@ RC SelectStmt::create(
       if (select_sql.exprs[i].expr_type == EXPR_ATTR) {
         if (common::is_blank(select_sql.exprs[i].attr.relation_name) &&
             0 == strcmp(select_sql.exprs[i].attr.attribute_name, "*")) {  //*
-          if (select_sql.select_expr_alias[i] != nullptr) {
-            return RC::GENERIC_ERROR;
-          }
           if (select_sql.exprs[i].attr.aggr_type == AGGR_COUNT) {
             express.emplace_back(new FieldExpr(tables[0], tables[0]->table_meta().field(0), AGGR_COUNT));
             select_expr_alias.emplace_back(select_sql.select_expr_alias[i]);
           } else {
+            if (select_sql.select_expr_alias[i] != nullptr) {
+              return RC::GENERIC_ERROR;
+            }
             for (Table *table : tables) {
               wildcard_expr(table, express, db, table_map, select_expr_alias);
             }
           }
         } else if ((!common::is_blank(select_sql.exprs[i].attr.relation_name)) &&
                    0 == strcmp(select_sql.exprs[i].attr.attribute_name, "*")) {  // t.*
-          if (select_sql.select_expr_alias[i] != nullptr) {
-            return RC::GENERIC_ERROR;
-          }
           auto table = table_map[select_sql.exprs[i].attr.relation_name];
           // TODO: check relation_name
           if (select_sql.exprs[i].attr.aggr_type == AGGR_COUNT) {
             express.emplace_back(new FieldExpr(table, table->table_meta().field(0), AGGR_COUNT));
             select_expr_alias.emplace_back(select_sql.select_expr_alias[i]);
           } else {
+            if (select_sql.select_expr_alias[i] != nullptr) {
+              return RC::GENERIC_ERROR;
+            }
             wildcard_expr(table, express, db, table_map, select_expr_alias);
           }
         } else {
