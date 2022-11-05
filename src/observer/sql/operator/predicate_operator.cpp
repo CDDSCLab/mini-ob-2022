@@ -96,8 +96,10 @@ RC PredicateOperator::do_predicate(Tuple *tuple, bool *result)
 
     if (comp == IN_OP) {
       std::vector<TupleCell> cells;
-      if (right_expr->type() == EXPR_SELECT || right_expr->type() == EXPR_VALUES) {
+      if (right_expr->type() == EXPR_SELECT) {
         rc = dynamic_cast<SelectExpr *>(right_expr)->get_values(*combine_tuple, &cells);
+      } else if (right_expr->type() == EXPR_VALUES) {
+        rc = dynamic_cast<ValuesExpr *>(right_expr)->get_values(*combine_tuple, &cells);
       }
       if (rc != RC::SUCCESS) {
         return rc;
@@ -114,8 +116,10 @@ RC PredicateOperator::do_predicate(Tuple *tuple, bool *result)
       }
     } else if (comp == NOT_IN_OP) {
       std::vector<TupleCell> cells;
-      if (right_expr->type() == EXPR_SELECT || right_expr->type() == EXPR_VALUES) {
+      if (right_expr->type() == EXPR_SELECT) {
         rc = dynamic_cast<SelectExpr *>(right_expr)->get_values(*combine_tuple, &cells);
+      } else if (right_expr->type() == EXPR_VALUES) {
+        rc = dynamic_cast<ValuesExpr *>(right_expr)->get_values(*combine_tuple, &cells);
       }
       if (rc != RC::SUCCESS) {
         return rc;
@@ -145,7 +149,7 @@ RC PredicateOperator::do_predicate(Tuple *tuple, bool *result)
       std::vector<TupleCell> cells;
       rc = dynamic_cast<SelectExpr *>(right_expr)->get_value(*combine_tuple, right_cell);
       if (rc != RC::SUCCESS) {
-        return rc;
+        return RC::GENERIC_ERROR;
       }
     } else if (left_cell.attr_type() == UNDEFINED || right_cell.attr_type() == UNDEFINED) {
       *result = true;
@@ -165,11 +169,9 @@ RC PredicateOperator::do_predicate(Tuple *tuple, bool *result)
         case NOT_EXISTS_OP:
           break;
         default:
-          *result = false;
+          filter_result = false;
       }
-    }
-
-    if (comp == LIKE_OP) {
+    } else if (comp == LIKE_OP) {
       filter_result = like(left_cell, right_cell);
     } else if (comp == NOT_LIKE_OP) {
       filter_result = !like(left_cell, right_cell);

@@ -74,6 +74,19 @@ RC SelectStmt::create(
   std::vector<Table *> tables;
   std::unordered_map<std::string, Table *> table_map;
   if (select_sql.relation_num > 0) {
+    // check duplicate table alias
+    for (size_t i = 0; i < select_sql.relation_num; i++) {
+      if (common::is_blank(select_sql.relation_alias[i])) {
+        continue;
+      }
+      const char *table_alias = select_sql.relation_alias[i];
+      for (size_t j = i + 1; j < select_sql.relation_num; j++) {
+        if (strcmp(table_alias, select_sql.relation_alias[j]) == 0) {
+          return RC::GENERIC_ERROR;
+        }
+      }
+    }
+
     for (size_t i = select_sql.relation_num - 1;; --i) {
       const char *table_name = select_sql.relations[i];
       const char *table_alias = select_sql.relation_alias[i];
@@ -218,6 +231,9 @@ RC SelectStmt::create(
       if (select_sql.exprs[i].expr_type == EXPR_ATTR) {
         if (common::is_blank(select_sql.exprs[i].attr.relation_name) &&
             0 == strcmp(select_sql.exprs[i].attr.attribute_name, "*")) {  //*
+          if (select_sql.select_expr_alias[i] != nullptr) {
+            return RC::GENERIC_ERROR;
+          }
           if (select_sql.exprs[i].attr.aggr_type == AGGR_COUNT) {
             express.emplace_back(new FieldExpr(tables[0], tables[0]->table_meta().field(0), AGGR_COUNT));
             select_expr_alias.emplace_back(select_sql.select_expr_alias[i]);
@@ -228,6 +244,9 @@ RC SelectStmt::create(
           }
         } else if ((!common::is_blank(select_sql.exprs[i].attr.relation_name)) &&
                    0 == strcmp(select_sql.exprs[i].attr.attribute_name, "*")) {  // t.*
+          if (select_sql.select_expr_alias[i] != nullptr) {
+            return RC::GENERIC_ERROR;
+          }
           auto table = table_map[select_sql.exprs[i].attr.relation_name];
           // TODO: check relation_name
           if (select_sql.exprs[i].attr.aggr_type == AGGR_COUNT) {

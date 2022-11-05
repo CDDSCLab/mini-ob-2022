@@ -59,7 +59,10 @@ RC SelectExpr::get_values(const Tuple &tuple, std::vector<TupleCell> *cells)
   DEFER([&]() { project_oper_->clear_parent_tuple(); });
 
   RC rc = project_oper_->open();
-  while (project_oper_->next() == RC::SUCCESS) {
+  if (rc != RC::SUCCESS) {
+    return rc;
+  }
+  while ((rc = project_oper_->next()) == RC::SUCCESS) {
     auto current_tuple = project_oper_->current_tuple();
     if (current_tuple->cell_num() > 1) {
       project_oper_->close();
@@ -67,10 +70,17 @@ RC SelectExpr::get_values(const Tuple &tuple, std::vector<TupleCell> *cells)
     }
     auto cell = new TupleCell();
     rc = current_tuple->cell_at(0, *cell);
+    if (rc != RC::SUCCESS) {
+      return RC::GENERIC_ERROR;
+    }
     cells->emplace_back(*cell);
   }
   project_oper_->close();
-  return rc;
+  if (rc != RC::RECORD_EOF) {
+    return RC::GENERIC_ERROR;
+  } else {
+    return RC::SUCCESS;
+  }
 }
 
 RC SelectExpr::has_value(const Tuple &tuple, bool *result)

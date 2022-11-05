@@ -172,6 +172,10 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
 
   left = ExpressionFactory::NewExpression(condition.left_expr, db, default_table, tables);
   right = ExpressionFactory::NewExpression(condition.right_expr, db, default_table, tables);
+  if (left == nullptr || right == nullptr) {
+    return RC::GENERIC_ERROR;
+  }
+
   // TODO(yueyang): handle typecast
 
   filter_unit = new FilterUnit;
