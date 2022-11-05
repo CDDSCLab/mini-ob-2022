@@ -83,7 +83,9 @@ RC PredicateOperator::do_predicate(Tuple *tuple, bool *result)
     combine_tuple = join_tuple;
   }
 
+  bool all_result = false;
   for (const FilterUnit *filter_unit : filter_stmt_->filter_units()) {
+    bool filter_result = true;
     Expression *left_expr = filter_unit->left();
     Expression *right_expr = filter_unit->right();
     CompOp comp = filter_unit->comp();
@@ -92,16 +94,16 @@ RC PredicateOperator::do_predicate(Tuple *tuple, bool *result)
     left_expr->get_value(*combine_tuple, left_cell);
     right_expr->get_value(*combine_tuple, right_cell);
 
-    bool filter_result = false;
     if (comp == IN_OP) {
       std::vector<TupleCell> cells;
-      if (right_expr->type() == EXPR_SELECT) {
+      if (right_expr->type() == EXPR_SELECT || right_expr->type() == EXPR_VALUES) {
         rc = dynamic_cast<SelectExpr *>(right_expr)->get_values(*combine_tuple, &cells);
-      } else if (right_expr->type() == EXPR_VALUES) {
-        rc = dynamic_cast<ValuesExpr *>(right_expr)->get_values(*combine_tuple, &cells);
       }
       if (rc != RC::SUCCESS) {
         return rc;
+      }
+      if (cells.empty()) {
+        filter_result = false;
       }
       for (const auto cell : cells) {
         if (cell.compare(left_cell) == 0) {
@@ -112,10 +114,8 @@ RC PredicateOperator::do_predicate(Tuple *tuple, bool *result)
       }
     } else if (comp == NOT_IN_OP) {
       std::vector<TupleCell> cells;
-      if (right_expr->type() == EXPR_SELECT) {
+      if (right_expr->type() == EXPR_SELECT || right_expr->type() == EXPR_VALUES) {
         rc = dynamic_cast<SelectExpr *>(right_expr)->get_values(*combine_tuple, &cells);
-      } else if (right_expr->type() == EXPR_VALUES) {
-        rc = dynamic_cast<ValuesExpr *>(right_expr)->get_values(*combine_tuple, &cells);
       }
       if (rc != RC::SUCCESS) {
         return rc;
@@ -166,7 +166,6 @@ RC PredicateOperator::do_predicate(Tuple *tuple, bool *result)
           break;
         default:
           *result = false;
-          return rc;
       }
     }
 
@@ -200,12 +199,15 @@ RC PredicateOperator::do_predicate(Tuple *tuple, bool *result)
         } break;
       }
     }
-    if (!filter_result) {
-      *result = false;
-      return rc;
+    if (filter_unit->logical_op() == LOGICAL_AND) {
+      all_result &= filter_result;
+    } else if (filter_unit->logical_op() == LOGICAL_OR) {
+      all_result |= filter_result;
+    } else if (filter_unit->logical_op() == LOGICAL_NONE) {
+      all_result = filter_result;
     }
   }
-  *result = true;
+  *result = all_result;
   return rc;
 }
 

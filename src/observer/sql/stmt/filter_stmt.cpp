@@ -176,6 +176,7 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
 
   filter_unit = new FilterUnit;
   filter_unit->set_comp(comp);
+  filter_unit->set_logical_op(condition.logical_op);
   filter_unit->set_left(left);
   filter_unit->set_right(right);
 
