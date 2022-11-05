@@ -49,8 +49,13 @@ typedef enum {
   NOT_IN_OP,      // "not in"       11
   EXISTS_OP,      // "exists"       12
   NOT_EXISTS_OP,  // "not exists"   13
-  NO_OP
+  NO_OP,
 } CompOp;
+
+typedef enum {
+  LOGICAL_AND,
+  LOGICAL_OR,
+} LogicalOp;
 
 // 属性值类型
 typedef enum { UNDEFINED, CHARS, TEXTS, INTS, FLOATS, DATES, NULLS } AttrType;

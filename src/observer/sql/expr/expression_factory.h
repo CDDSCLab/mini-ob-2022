@@ -44,7 +44,7 @@ public:
       }
       case EXPR_SELECT: {
         Stmt *select_stmt;
-        SelectStmt::create(db, *expr.select, select_stmt);
+        SelectStmt::create(db, *expr.select, *tables, select_stmt);
         auto project_oper = new ProjectOperator();
         OperatorFactory::GetProjectOperator(dynamic_cast<SelectStmt *>(select_stmt), project_oper);
         return new SelectExpr(project_oper);

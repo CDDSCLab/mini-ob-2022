@@ -28,6 +28,9 @@ RC ValueExpr::get_value(const Tuple &tuple, TupleCell &cell) const
 
 RC SelectExpr::get_value(const Tuple &tuple, TupleCell &cell) const
 {
+  project_oper_->add_parent_tuple(&tuple);
+  DEFER([&]() { project_oper_->clear_parent_tuple(); });
+
   RC rc = project_oper_->open();
   if (rc != RC::SUCCESS) {
     return rc;
@@ -52,10 +55,10 @@ RC SelectExpr::get_value(const Tuple &tuple, TupleCell &cell) const
 
 RC SelectExpr::get_values(const Tuple &tuple, std::vector<TupleCell> *cells)
 {
+  project_oper_->add_parent_tuple(&tuple);
+  DEFER([&]() { project_oper_->clear_parent_tuple(); });
+
   RC rc = project_oper_->open();
-  if (rc != RC::SUCCESS) {
-    return rc;
-  }
   while (project_oper_->next() == RC::SUCCESS) {
     auto current_tuple = project_oper_->current_tuple();
     if (current_tuple->cell_num() > 1) {
@@ -66,13 +69,15 @@ RC SelectExpr::get_values(const Tuple &tuple, std::vector<TupleCell> *cells)
     rc = current_tuple->cell_at(0, *cell);
     cells->emplace_back(*cell);
   }
-
   project_oper_->close();
   return rc;
 }
 
 RC SelectExpr::has_value(const Tuple &tuple, bool *result)
 {
+  project_oper_->add_parent_tuple(&tuple);
+  DEFER([&]() { project_oper_->clear_parent_tuple(); });
+
   RC rc = project_oper_->open();
   if (rc != RC::SUCCESS) {
     return rc;

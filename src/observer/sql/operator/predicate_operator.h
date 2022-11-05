@@ -40,7 +40,7 @@ public:
   // int tuple_cell_num() const override;
   // RC tuple_cell_spec_at(int index, TupleCellSpec &spec) const override;
 private:
-  RC do_predicate(RowTuple &tuple, bool *result);
+  RC do_predicate(Tuple *tuple, bool *result);
 
   bool like(const TupleCell &left_cell, const TupleCell &right_cell);
 

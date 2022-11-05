@@ -58,6 +58,13 @@ static void wildcard_expr(Table *table, std::vector<Expression *> &exprs, Db *db
 
 RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
 {
+  std::unordered_map<std::string, Table *> table_map;
+  return create(db, select_sql, table_map, stmt);
+}
+
+RC SelectStmt::create(
+    Db *db, const Selects &select_sql, std::unordered_map<std::string, Table *> &parents_map, Stmt *&stmt)
+{
   if (nullptr == db) {
     LOG_WARN("invalid argument. db is null");
     return RC::INVALID_ARGUMENT;
@@ -335,8 +342,9 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
 
   // create filter statement in `where` statement
   FilterStmt *filter_stmt = nullptr;
-  RC rc =
-      FilterStmt::create(db, default_table, &table_map, select_sql.conditions, select_sql.condition_num, filter_stmt);
+  // TODO: add parent table
+  RC rc = FilterStmt::create(
+      db, default_table, &table_map, &parents_map, select_sql.conditions, select_sql.condition_num, filter_stmt);
   if (rc != RC::SUCCESS) {
     LOG_WARN("cannot construct filter stmt");
     return rc;

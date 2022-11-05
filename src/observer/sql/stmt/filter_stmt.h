@@ -44,10 +44,27 @@ public:
   {
     comp_ = comp;
   }
-
   CompOp comp() const
   {
     return comp_;
+  }
+
+  void set_logical_op(LogicalOp logical_op)
+  {
+    logical_op_ = logical_op;
+  }
+  LogicalOp logical_op() const
+  {
+    return logical_op_;
+  }
+
+  void set_correlated(bool correlated)
+  {
+    correlated_ = correlated;
+  }
+  bool correlated() const
+  {
+    return correlated_;
   }
 
   void set_left(Expression *expr)
@@ -69,6 +86,8 @@ public:
 
 private:
   CompOp comp_ = NO_OP;
+  LogicalOp logical_op_ = LOGICAL_AND;
+  bool correlated_ = false;
   Expression *left_ = nullptr;
   Expression *right_ = nullptr;
 };
@@ -87,6 +106,9 @@ public:
 public:
   static RC create(Db *db, Table *default_table, std::unordered_map<std::string, Table *> *tables,
       const Condition *conditions, int condition_num, FilterStmt *&stmt);
+  static RC create(Db *db, Table *default_table, std::unordered_map<std::string, Table *> *tables,
+      std::unordered_map<std::string, Table *> *parent_tables, const Condition *conditions, int condition_num,
+      FilterStmt *&stmt);
 
   static RC create_filter_unit(Db *db, Table *default_table, std::unordered_map<std::string, Table *> *tables,
       const Condition &condition, FilterUnit *&filter_unit);

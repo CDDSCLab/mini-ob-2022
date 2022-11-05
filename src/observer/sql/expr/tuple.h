@@ -371,6 +371,11 @@ public:
     return (left_->cell_num() + right_->cell_num());
   }
 
+  Tuple *left() const
+  {
+    return left_;
+  }
+
 private:
   Tuple *left_;
   Tuple *right_;

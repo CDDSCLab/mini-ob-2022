@@ -15,8 +15,10 @@ See the Mulan PSL v2 for more details. */
 #pragma once
 
 #include <vector>
+#include <unordered_map>
 #include "rc.h"
 #include "sql/expr/tuple.h"
+#include "common/lang/defer.h"
 
 class Record;
 class TupleCellSpec;
@@ -33,6 +35,23 @@ public:
   virtual RC close() = 0;
 
   virtual Tuple *current_tuple() = 0;
+  void add_parent_tuple(const Tuple *tuple)
+  {
+    if (parent_tuple_ != nullptr) {
+      assert(false);
+    }
+    parent_tuple_ = const_cast<Tuple *>(tuple);
+    for (auto const &op : children_) {
+      op->add_parent_tuple(tuple);
+    }
+  }
+  void clear_parent_tuple()
+  {
+    parent_tuple_ = nullptr;
+    for (auto const &op : children_) {
+      op->clear_parent_tuple();
+    }
+  }
   // virtual int tuple_cell_num() const = 0;
   // virtual RC  tuple_cell_spec_at(int index, TupleCellSpec *&spec) const = 0;
 
@@ -43,4 +62,5 @@ public:
 
 protected:
   std::vector<Operator *> children_;
+  Tuple *parent_tuple_ = nullptr;
 };

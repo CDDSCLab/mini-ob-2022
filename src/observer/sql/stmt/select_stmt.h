@@ -15,6 +15,7 @@ See the Mulan PSL v2 for more details. */
 #pragma once
 
 #include <vector>
+#include <unordered_map>
 
 #include "rc.h"
 #include "sql/stmt/stmt.h"
@@ -38,6 +39,9 @@ public:
 
 public:
   static RC create(Db *db, const Selects &select_sql, Stmt *&stmt);
+
+  static RC create(
+      Db *db, const Selects &select_sql, std::unordered_map<std::string, Table *> &parents_map, Stmt *&stmt);
 
 public:
   const std::vector<Table *> &tables() const

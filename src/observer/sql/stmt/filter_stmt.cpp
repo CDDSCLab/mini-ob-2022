@@ -32,13 +32,27 @@ FilterStmt::~FilterStmt()
 RC FilterStmt::create(Db *db, Table *default_table, std::unordered_map<std::string, Table *> *tables,
     const Condition *conditions, int condition_num, FilterStmt *&stmt)
 {
+  return create(db, default_table, nullptr, tables, conditions, condition_num, stmt);
+}
+
+RC FilterStmt::create(Db *db, Table *default_table, std::unordered_map<std::string, Table *> *tables,
+    std::unordered_map<std::string, Table *> *parent_tables, const Condition *conditions, int condition_num,
+    FilterStmt *&stmt)
+{
   RC rc = RC::SUCCESS;
   stmt = nullptr;
 
   auto tmp_stmt = new FilterStmt();
   for (int i = 0; i < condition_num; i++) {
     FilterUnit *filter_unit = nullptr;
-    rc = create_filter_unit(db, default_table, tables, conditions[i], filter_unit);
+    std::unordered_map<std::string, Table *> temp_tables;
+    if (tables != nullptr) {
+      temp_tables.insert(tables->begin(), tables->end());
+    }
+    if (parent_tables != nullptr) {
+      temp_tables.insert(parent_tables->begin(), parent_tables->end());
+    }
+    rc = create_filter_unit(db, default_table, &temp_tables, conditions[i], filter_unit);
     if (rc != RC::SUCCESS) {
       delete tmp_stmt;
       LOG_WARN("failed to create filter unit. condition index=%d", i);
@@ -159,78 +173,6 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
   left = ExpressionFactory::NewExpression(condition.left_expr, db, default_table, tables);
   right = ExpressionFactory::NewExpression(condition.right_expr, db, default_table, tables);
   // TODO(yueyang): handle typecast
-
-  //  AttrType left_type = UNDEFINED;
-  //  AttrType right_type = UNDEFINED;
-  //  if (condition.left_is_expr) {
-  //    Table *table = nullptr;
-  //    const FieldMeta *field = nullptr;
-  //    rc = get_table_and_field(db, default_table, tables, condition.left_attr, table, field);
-  //    if (rc != RC::SUCCESS) {
-  //      LOG_WARN("cannot find attr");
-  //      return rc;
-  //    }
-  //    left_field = new FieldExpr(table, field);
-  //    left_type = field->type();
-  //    if (!condition.right_is_expr) {
-  //      if (field->type() == DATES && condition.right_value.type == CHARS) {
-  //        int date;
-  //        rc = char2date((const char *)condition.right_value.data, &date);
-  //        if (rc != RC::SUCCESS) {
-  //          return rc;
-  //        }
-  //        auto value = &const_cast<Condition &>(condition).right_value;
-  //        value->type = DATES;
-  //        memcpy(value->data, &date, sizeof(date));
-  //        right_field = new ValueExpr(*value);
-  //      }
-  //    }
-  //  }
-  //
-  //
-  //  if (condition.right_is_expr) {
-  //    Table *table = nullptr;
-  //    const FieldMeta *field = nullptr;
-  //    rc = get_table_and_field(db, default_table, tables, condition.right_attr, table, field);
-  //    if (rc != RC::SUCCESS) {
-  //      LOG_WARN("cannot find attr");
-  //      delete left_field;
-  //      return rc;
-  //    }
-  //    right_field = new FieldExpr(table, field);
-  //    right_type = field->type();
-  //    if (!condition.left_is_expr) {
-  //      if (field->type() == DATES && condition.left_value.type == CHARS) {
-  //        int date;
-  //        rc = char2date((const char *)condition.left_value.data, &date);
-  //        if (rc != RC::SUCCESS) {
-  //          return rc;
-  //        }
-  //        auto value = &const_cast<Condition &>(condition).left_value;
-  //        value->type = DATES;
-  //        memcpy(value->data, &date, sizeof(date));
-  //        left_field = new ValueExpr(*value);
-  //      }
-  //    }
-  //  }
-  //
-  //  if (left_field == nullptr) {
-  //    left_field = new ValueExpr(condition.left_value);
-  //    left_type = condition.left_value.type;
-  //  }
-  //
-  //  if (right_field == nullptr) {
-  //    right_field = new ValueExpr(condition.right_value);
-  //    right_type = condition.right_value.type;
-  //  }
-  //
-  //  if (comp == LIKE_OP || comp == NOT_LIKE_OP) {
-  //    if (condition.right_is_expr) {
-  //      return RC::INVALID_ARGUMENT;
-  //    } else if (left_type != CHARS || right_type != CHARS) {
-  //      return RC::INVALID_ARGUMENT;
-  //    }
-  //  }
 
   filter_unit = new FilterUnit;
   filter_unit->set_comp(comp);
