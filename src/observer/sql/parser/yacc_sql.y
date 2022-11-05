@@ -574,6 +574,12 @@ select_attr:
         expr_init_attr(&CONTEXT->exprs[CONTEXT->expr_length], &attr);
         selects_append_expr(&CONTEXT->selects[CONTEXT->select_length], &CONTEXT->exprs[CONTEXT->expr_length++], NULL);
     }
+    // | ID COMMA STAR select_attr_list {
+    //     RelAttr attr;
+    //     relation_attr_init(&attr, $1, "*");
+    //     expr_init_attr(&CONTEXT->exprs[CONTEXT->expr_length], &attr);
+    //     selects_append_expr(&CONTEXT->selects[CONTEXT->select_length], &CONTEXT->exprs[CONTEXT->expr_length++], NULL);
+    // }
     | expr alias select_attr_list {
         selects_append_expr(&CONTEXT->selects[CONTEXT->select_length], $1, $2);
     };
@@ -648,6 +654,11 @@ attr:
     | ID DOT ID {
         RelAttr *attr = &CONTEXT->attrs[CONTEXT->attr_length++];
         relation_attr_init(attr, $1, $3);
+        $$ = attr;
+    }
+    | ID DOT STAR {
+        RelAttr *attr = &CONTEXT->attrs[CONTEXT->attr_length++];
+        relation_attr_init(attr, $1, "*");
         $$ = attr;
     };
 aggr_attr:
