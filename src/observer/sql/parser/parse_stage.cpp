@@ -129,15 +129,6 @@ RC ParseStage::handle_request(StageEvent *event)
 
   RC ret = parse(sql.c_str(), query_result);
 
-  if (sql_event->sql() == "select round(235.415, 2) as round_value;") {
-    std::stringstream ss;
-    ss << "ROUND_VALUE"
-       << "\n"
-       << 235.42 << "\n";
-    sql_event->session_event()->set_response(ss.str().c_str());
-    return RC::INTERNAL;
-  }
-
   if (ret != RC::SUCCESS) {
     // set error information to event
     //    sql_event->session_event()->set_response("Failed to parse sql\n");

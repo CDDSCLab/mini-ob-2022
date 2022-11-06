@@ -132,23 +132,8 @@ public:
   {
     float left = TupleCellToFloat(left_cell);
     int right = TupleCellToInt(right_cell);
-    // double res = my_round(left, right);
-    // float result = std::round(left * pow(10, right)) / pow(10, right);
-    int num = 0;
-    float tmp;
-    if (left < 0) {
-      tmp = 0 - left;
-      num++;
-    } else {
-      tmp = left;
-    }
-
-    while (tmp / 10 > 1) {
-      tmp = tmp / 10;
-      num++;
-    }
     Value value;
-    value_init_float(&value, atof(double2string(left, right).c_str()));
+    value_init_float(&value, atof(double2string(left + 0.0001, right).c_str()));
     TupleCell re = {FLOATS, static_cast<char *>(value.data)};
     re.set_num(right);
     return re;
